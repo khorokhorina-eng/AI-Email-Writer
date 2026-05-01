@@ -1,0 +1,11 @@
+{
+  "appName": {
+    "message": "AI Email Writer"
+  },
+  "shortDesc": {
+    "message": "Write emails from short prompts and insert them into email fields in your browser."
+  },
+  "storeDesc": {
+    "message": "AI Email Writer helps you turn short prompts into ready-to-send emails in your browser. Open the side panel, describe what you want to say, generate a draft, and insert it into the current email field."
+  }
+}

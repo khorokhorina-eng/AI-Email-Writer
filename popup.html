@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Email Writer</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="appShell" class="app-shell">
+      <aside id="profileDrawer" class="profile-drawer" aria-hidden="true">
+        <div class="drawer-head">
+          <div class="drawer-avatar" aria-hidden="true">
+            <span class="avatar-glyph"></span>
+          </div>
+          <button id="closeDrawer" class="icon-btn ghost-btn" aria-label="Close profile drawer">×</button>
+        </div>
+
+        <div class="drawer-summary-card">
+          <div class="drawer-summary-block">
+            <p class="drawer-label">Account</p>
+            <p class="drawer-email">Guest mode</p>
+          </div>
+          <div class="drawer-summary-divider" aria-hidden="true"></div>
+          <div class="drawer-summary-block">
+            <p class="drawer-label">Current plan</p>
+            <p class="drawer-plan-name">Free Trial</p>
+            <p class="drawer-plan-meta">Prototype build for local testing.</p>
+          </div>
+        </div>
+
+        <div class="drawer-actions">
+          <button id="drawerUpgrade" class="drawer-upgrade-btn">Upgrade</button>
+          <button id="accountAction" class="drawer-link-btn">Contact sales</button>
+        </div>
+      </aside>
+
+      <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
+
+      <main class="panel-shell">
+        <header class="panel-header">
+          <button id="profileTrigger" class="profile-trigger" aria-label="Open profile drawer">
+            <span class="profile-trigger-icon" aria-hidden="true">
+              <span class="avatar-glyph"></span>
+            </span>
+            <span class="profile-trigger-text">Account</span>
+          </button>
+          <span id="status" class="status-pill">Ready</span>
+          <div class="header-spacer" aria-hidden="true"></div>
+          <button id="openPaywall" class="ghost-btn">Get plan</button>
+          <button id="backToReader" class="ghost-btn hidden">Back</button>
+        </header>
+
+        <section id="readerScreen" class="screen">
+          <div class="hero-card">
+            <p class="eyebrow">BROWSER SIDE PANEL</p>
+            <h1 class="hero-title">Write Emails Faster</h1>
+            <p id="hint" class="hero-copy">Describe the email you need. Then copy it or insert it into the active email field.</p>
+          </div>
+
+          <section class="reader-controls email-form-card">
+            <label class="field-group">
+              <span class="field-label">Task</span>
+              <select id="modeSelect" class="field-input">
+                <option value="write">Write email</option>
+                <option value="reply">Reply to email</option>
+                <option value="rewrite">Rewrite draft</option>
+              </select>
+            </label>
+
+            <label class="field-group">
+              <span class="field-label">Tone</span>
+              <select id="toneSelect" class="field-input">
+                <option value="professional">Professional</option>
+                <option value="friendly">Friendly</option>
+                <option value="polite">Polite</option>
+                <option value="confident">Confident</option>
+              </select>
+            </label>
+
+            <label class="field-group">
+              <span class="field-label">Prompt</span>
+              <textarea
+                id="promptInput"
+                class="field-input field-textarea"
+                rows="5"
+                placeholder="reply to client and ask for deadline"
+              ></textarea>
+            </label>
+
+            <div class="chip-row">
+              <button class="quick-chip" data-prompt="reply to client and ask for deadline">Ask for deadline</button>
+              <button class="quick-chip" data-prompt="follow up after interview">Interview follow-up</button>
+              <button class="quick-chip" data-prompt="decline politely">Decline politely</button>
+            </div>
+
+            <button id="generateBtn" class="primary-action">Generate email</button>
+          </section>
+
+          <section class="file-card">
+            <div class="file-meta-row">
+              <div>
+                <p class="file-meta-label">Active page</p>
+                <p id="pageContext" class="file-name">Checking current tab…</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="reader-controls generated-card">
+            <div class="file-meta">
+              <div class="file-meta-topline">
+                <p class="file-meta-label">Generated email</p>
+              </div>
+            </div>
+
+            <label class="field-group">
+              <span class="field-label">Subject</span>
+              <input id="subjectOutput" class="field-input" type="text" placeholder="Your generated subject will appear here" />
+            </label>
+
+            <label class="field-group">
+              <span class="field-label">Body</span>
+              <textarea
+                id="bodyOutput"
+                class="field-input field-textarea body-output"
+                rows="9"
+                placeholder="Your generated email body will appear here"
+              ></textarea>
+            </label>
+
+            <div class="secondary-grid">
+              <button id="copyBtn" class="secondary-action">Copy</button>
+              <button id="insertBtn" class="secondary-action">Insert into page</button>
+            </div>
+          </section>
+        </section>
+
+        <section id="paywallScreen" class="screen hidden">
+          <div class="paywall-top">
+            <div>
+              <h2 class="paywall-title">Unlock premium writing</h2>
+            </div>
+          </div>
+
+          <p class="paywall-status">Prototype pricing screen for premium email-writing access.</p>
+
+          <section class="paywall-card">
+            <h3 class="paywall-plan-title">Monthly</h3>
+            <div class="paywall-price-row">
+              <span class="paywall-price">$0.33</span>
+              <span class="paywall-price-unit">/day</span>
+            </div>
+            <p class="paywall-billing-note">Billed monthly $9.99 / month</p>
+
+            <ul class="feature-list">
+              <li>Generate more emails per day</li>
+              <li>Use richer prompts and longer drafts</li>
+              <li>Save more time in browser-based email workflows</li>
+            </ul>
+
+            <button id="monthlyPlanBtn" class="subscribe-btn">Subscribe monthly</button>
+          </section>
+
+          <section class="paywall-card paywall-card-featured">
+            <p class="paywall-plan-badge">Best Value</p>
+            <h3 class="paywall-plan-title">Yearly</h3>
+            <div class="paywall-price-row">
+              <span class="paywall-price">$0.25</span>
+              <span class="paywall-price-unit">/day</span>
+            </div>
+            <p class="paywall-billing-note">Billed annually $89.99 / year</p>
+
+            <ul class="feature-list">
+              <li>Best price for daily email writing</li>
+              <li>Priority access to future AI writing tools</li>
+              <li>Premium support access</li>
+            </ul>
+
+            <button id="yearlyPlanBtn" class="subscribe-btn">Subscribe yearly</button>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

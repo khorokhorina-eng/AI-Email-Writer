@@ -1,0 +1,26 @@
+{
+  "name": "ai-email-writer",
+  "version": "0.1.0",
+  "description": "Browser extension prototype for writing emails from short prompts.",
+  "main": "index.js",
+  "scripts": {
+    "server": "node server.js",
+    "server:dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khorokhorina-eng/AI-Email-Writer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/khorokhorina-eng/AI-Email-Writer/issues"
+  },
+  "homepage": "https://github.com/khorokhorina-eng/AI-Email-Writer#readme",
+  "dependencies": {
+    "pdfjs-dist": "^3.11.174",
+    "stripe": "^20.4.0"
+  }
+}
