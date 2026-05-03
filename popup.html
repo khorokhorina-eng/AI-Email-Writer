@@ -25,13 +25,13 @@
           <div class="drawer-summary-block">
             <p class="drawer-label">Current plan</p>
             <p class="drawer-plan-name">Free Trial</p>
-            <p class="drawer-plan-meta">Prototype build for local testing.</p>
+            <p class="drawer-plan-meta">Use Gmail inline writing for the current MVP.</p>
           </div>
         </div>
 
         <div class="drawer-actions">
           <button id="drawerUpgrade" class="drawer-upgrade-btn">Upgrade</button>
-          <button id="accountAction" class="drawer-link-btn">Contact sales</button>
+          <button id="accountAction" class="drawer-link-btn">Sign in with Google</button>
         </div>
       </aside>
 
@@ -43,94 +43,43 @@
             <span class="profile-trigger-icon" aria-hidden="true">
               <span class="avatar-glyph"></span>
             </span>
-            <span class="profile-trigger-text">Account</span>
+            <span class="profile-trigger-text">Workspace</span>
           </button>
           <span id="status" class="status-pill">Ready</span>
           <div class="header-spacer" aria-hidden="true"></div>
-          <button id="openPaywall" class="ghost-btn">Get plan</button>
           <button id="backToReader" class="ghost-btn hidden">Back</button>
         </header>
 
         <section id="readerScreen" class="screen">
           <div class="hero-card">
-            <p class="eyebrow">BROWSER SIDE PANEL</p>
-            <h1 class="hero-title">Write Emails Faster</h1>
-            <p id="hint" class="hero-copy">Describe the email you need. Then copy it or insert it into the active email field.</p>
+            <p class="eyebrow">AI EMAIL WRITER</p>
+            <h1 class="hero-title">Write inside Gmail</h1>
+            <p id="hint" class="hero-copy">Open Gmail and use the Write with AI button inside the page.</p>
           </div>
-
-          <section class="reader-controls email-form-card">
-            <label class="field-group">
-              <span class="field-label">Task</span>
-              <select id="modeSelect" class="field-input">
-                <option value="write">Write email</option>
-                <option value="reply">Reply to email</option>
-                <option value="rewrite">Rewrite draft</option>
-              </select>
-            </label>
-
-            <label class="field-group">
-              <span class="field-label">Tone</span>
-              <select id="toneSelect" class="field-input">
-                <option value="professional">Professional</option>
-                <option value="friendly">Friendly</option>
-                <option value="polite">Polite</option>
-                <option value="confident">Confident</option>
-              </select>
-            </label>
-
-            <label class="field-group">
-              <span class="field-label">Prompt</span>
-              <textarea
-                id="promptInput"
-                class="field-input field-textarea"
-                rows="5"
-                placeholder="reply to client and ask for deadline"
-              ></textarea>
-            </label>
-
-            <div class="chip-row">
-              <button class="quick-chip" data-prompt="reply to client and ask for deadline">Ask for deadline</button>
-              <button class="quick-chip" data-prompt="follow up after interview">Interview follow-up</button>
-              <button class="quick-chip" data-prompt="decline politely">Decline politely</button>
-            </div>
-
-            <button id="generateBtn" class="primary-action">Generate email</button>
-          </section>
 
           <section class="file-card">
             <div class="file-meta-row">
               <div>
-                <p class="file-meta-label">Active page</p>
+                <p class="file-meta-label">Current page</p>
                 <p id="pageContext" class="file-name">Checking current tab…</p>
               </div>
             </div>
           </section>
 
-          <section class="reader-controls generated-card">
+          <section class="reader-controls email-form-card">
             <div class="file-meta">
               <div class="file-meta-topline">
-                <p class="file-meta-label">Generated email</p>
+                <p class="file-meta-label">How to use</p>
               </div>
             </div>
-
-            <label class="field-group">
-              <span class="field-label">Subject</span>
-              <input id="subjectOutput" class="field-input" type="text" placeholder="Your generated subject will appear here" />
-            </label>
-
-            <label class="field-group">
-              <span class="field-label">Body</span>
-              <textarea
-                id="bodyOutput"
-                class="field-input field-textarea body-output"
-                rows="9"
-                placeholder="Your generated email body will appear here"
-              ></textarea>
-            </label>
-
+            <ol class="steps-list">
+              <li>Open a Gmail thread or inbox.</li>
+              <li>Click the blue <strong>Write with AI</strong> button inside Gmail.</li>
+              <li>Describe what the reply should do and insert the draft.</li>
+            </ol>
             <div class="secondary-grid">
-              <button id="copyBtn" class="secondary-action">Copy</button>
-              <button id="insertBtn" class="secondary-action">Insert into page</button>
+              <button id="openGmailBtn" class="secondary-action">Open Gmail</button>
+              <button id="openPaywallBtn" class="secondary-action">View plans</button>
             </div>
           </section>
         </section>
@@ -142,7 +91,7 @@
             </div>
           </div>
 
-          <p class="paywall-status">Prototype pricing screen for premium email-writing access.</p>
+          <p class="paywall-status">Account and pricing live here. Writing stays in Gmail.</p>
 
           <section class="paywall-card">
             <h3 class="paywall-plan-title">Monthly</h3>
@@ -155,7 +104,7 @@
             <ul class="feature-list">
               <li>Generate more emails per day</li>
               <li>Use richer prompts and longer drafts</li>
-              <li>Save more time in browser-based email workflows</li>
+              <li>Save more time in Gmail workflows</li>
             </ul>
 
             <button id="monthlyPlanBtn" class="subscribe-btn">Subscribe monthly</button>
