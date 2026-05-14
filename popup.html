@@ -24,13 +24,13 @@
           <div class="drawer-summary-divider" aria-hidden="true"></div>
           <div class="drawer-summary-block">
             <p class="drawer-label">Current plan</p>
-            <p class="drawer-plan-name">Free Trial</p>
-            <p class="drawer-plan-meta">Use Gmail inline writing for the current MVP.</p>
+            <p id="drawerPlanName" class="drawer-plan-name">Free Trial</p>
+            <p id="drawerPlanMeta" class="drawer-plan-meta">15 replies included in your free trial.</p>
           </div>
         </div>
 
         <div class="drawer-actions">
-          <button id="drawerUpgrade" class="drawer-upgrade-btn">Upgrade</button>
+          <button id="drawerUpgrade" class="drawer-upgrade-btn hidden">Upgrade</button>
           <button id="accountAction" class="drawer-link-btn">Sign in with Google</button>
         </div>
       </aside>
@@ -53,34 +53,46 @@
         <section id="readerScreen" class="screen">
           <div class="hero-card">
             <p class="eyebrow">AI EMAIL WRITER</p>
-            <h1 class="hero-title">Write inside Gmail</h1>
-            <p id="hint" class="hero-copy">Open Gmail and use the Write with AI button inside the page.</p>
+            <h1 class="hero-title">Reply in Gmail</h1>
+            <p id="hint" class="hero-copy">Open a Gmail email, click “Write with AI”, then describe the reply you want.</p>
           </div>
 
-          <section class="file-card">
-            <div class="file-meta-row">
-              <div>
-                <p class="file-meta-label">Current page</p>
-                <p id="pageContext" class="file-name">Checking current tab…</p>
-              </div>
+          <section class="context-bar" aria-label="Current email context">
+            <div class="context-bar-main">
+              <p class="field-label context-label">Email</p>
+              <p id="contextTitle" class="context-title">No Gmail email selected</p>
+              <p id="contextNote" class="context-note">Open a Gmail thread, then click “Write with AI”.</p>
             </div>
+            <button id="refreshContextBtn" class="context-refresh-btn" type="button">Refresh</button>
           </section>
 
-          <section class="reader-controls email-form-card">
-            <div class="file-meta">
-              <div class="file-meta-topline">
-                <p class="file-meta-label">How to use</p>
-              </div>
+          <section class="email-form-card form-card">
+            <div class="field-group">
+              <label class="field-label" for="taskInput">Task for AI</label>
+              <p class="field-note">Say what the reply should do.</p>
+              <textarea id="taskInput" class="field-input field-textarea" placeholder="Ask for a deadline and say you will get back next week."></textarea>
             </div>
-            <ol class="steps-list">
-              <li>Open a Gmail thread or inbox.</li>
-              <li>Click the blue <strong>Write with AI</strong> button inside Gmail.</li>
-              <li>Describe what the reply should do and insert the draft.</li>
-            </ol>
-            <div class="secondary-grid">
-              <button id="openGmailBtn" class="secondary-action">Open Gmail</button>
-              <button id="openPaywallBtn" class="secondary-action">View plans</button>
+
+            <div class="field-group">
+              <label class="field-label" for="toneSelect">Tone</label>
+              <select id="toneSelect" class="field-input">
+                <option value="Professional">Professional</option>
+                <option value="Friendly">Friendly</option>
+                <option value="Direct">Direct</option>
+              </select>
             </div>
+
+            <div class="form-action-row">
+              <button id="generateBtn" class="primary-action form-generate-btn">Generate reply</button>
+              <button id="openPaywallBtn" class="secondary-action subtle-action hidden">View plans</button>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="draftOutput">Draft preview</label>
+              <textarea id="draftOutput" class="field-input field-textarea body-output" placeholder="Your generated reply will appear here."></textarea>
+            </div>
+
+            <button id="insertDraftBtn" class="secondary-action form-insert-btn">Insert</button>
           </section>
         </section>
 
@@ -91,7 +103,7 @@
             </div>
           </div>
 
-          <p class="paywall-status">Account and pricing live here. Writing stays in Gmail.</p>
+          <p class="paywall-status">Keep writing replies in Gmail with a paid plan.</p>
 
           <section class="paywall-card">
             <h3 class="paywall-plan-title">Monthly</h3>
@@ -102,9 +114,9 @@
             <p class="paywall-billing-note">Billed monthly $9.99 / month</p>
 
             <ul class="feature-list">
-              <li>Generate more emails per day</li>
-              <li>Use richer prompts and longer drafts</li>
-              <li>Save more time in Gmail workflows</li>
+              <li>Unlimited email writing</li>
+              <li>Reply faster in Gmail</li>
+              <li>Simple paid access</li>
             </ul>
 
             <button id="monthlyPlanBtn" class="subscribe-btn">Subscribe monthly</button>
@@ -120,9 +132,9 @@
             <p class="paywall-billing-note">Billed annually $89.99 / year</p>
 
             <ul class="feature-list">
-              <li>Best price for daily email writing</li>
-              <li>Priority access to future AI writing tools</li>
-              <li>Premium support access</li>
+              <li>Unlimited email writing</li>
+              <li>Best price for regular use</li>
+              <li>Simple annual billing</li>
             </ul>
 
             <button id="yearlyPlanBtn" class="subscribe-btn">Subscribe yearly</button>

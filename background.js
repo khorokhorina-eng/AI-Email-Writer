@@ -25,3 +25,23 @@ chrome.runtime.onInstalled.addListener((details) => {
 chrome.runtime.onStartup?.addListener(() => {
   void configureSidePanelBehavior();
 });
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== "openSidePanelForTab") {
+    return false;
+  }
+
+  const tabId = Number(message.tabId || sender.tab?.id);
+  const windowId = Number(message.windowId || sender.tab?.windowId);
+  if (!Number.isFinite(tabId) || !Number.isFinite(windowId) || !chrome.sidePanel?.open) {
+    sendResponse({ ok: false });
+    return false;
+  }
+
+  void chrome.sidePanel
+    .open({ tabId, windowId })
+    .then(() => sendResponse({ ok: true }))
+    .catch(() => sendResponse({ ok: false }));
+
+  return true;
+});

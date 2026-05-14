@@ -1,0 +1,15 @@
+[Unit]
+Description=AI Email Writer backend
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/ai-email-writer
+ExecStart=/usr/bin/node /root/ai-email-writer/server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

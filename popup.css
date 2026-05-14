@@ -177,11 +177,12 @@ body {
 .screen {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   animation: fade-in 0.22s ease;
 }
 
 .hero-card,
+.context-bar,
 .trial-banner,
 .reader-controls,
 .auth-panel,
@@ -193,11 +194,11 @@ body {
 }
 
 .hero-card {
-  padding: 18px 18px 20px;
+  padding: 18px 18px 16px;
 }
 
 .eyebrow {
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -214,18 +215,76 @@ body {
 }
 
 .hero-title {
-  font-size: 28px;
+  font-size: 24px;
   line-height: 1;
   font-weight: 620;
   color: #202124;
 }
 
 .hero-copy {
-  margin: 14px 0 0;
+  margin: 10px 0 0;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.45;
   color: var(--muted);
-  max-width: 240px;
+  max-width: 300px;
+}
+
+.context-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.context-bar-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.context-label {
+  margin-bottom: 3px;
+}
+
+.context-title {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 650;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.context-note {
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.context-refresh-btn {
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.context-bar.has-context .context-note {
+  display: none;
+}
+
+.context-refresh-btn:hover:not(:disabled) {
+  transform: none;
+  background: #fff;
 }
 
 .trial-banner {
@@ -752,12 +811,50 @@ body.drawer-open .profile-drawer {
   padding: 16px;
 }
 
+.form-card {
+  margin-top: 6px;
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.form-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.subtle-action {
+  width: auto;
+  min-width: 108px;
+  min-height: 56px;
+}
+
 .field-group {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+}
+
+.section-title {
+  margin: 0 0 14px;
+  font-size: 16px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #202124;
 }
 
 .field-label {
+  margin: 0;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -768,8 +865,8 @@ body.drawer-open .profile-drawer {
 .field-input {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 13px 14px;
+  border-radius: 20px;
+  padding: 14px 16px;
   background: rgba(255, 255, 255, 0.92);
   color: var(--ink);
   font: inherit;
@@ -778,17 +875,17 @@ body.drawer-open .profile-drawer {
 }
 
 .field-input:focus {
-  outline: 2px solid rgba(26, 115, 232, 0.14);
+  outline: 3px solid rgba(26, 115, 232, 0.12);
   border-color: rgba(26, 115, 232, 0.42);
 }
 
 .field-textarea {
-  min-height: 104px;
+  min-height: 112px;
   resize: vertical;
 }
 
 .body-output {
-  min-height: 184px;
+  min-height: 164px;
 }
 
 .chip-row {
@@ -802,7 +899,8 @@ body.drawer-open .profile-drawer {
   background: rgba(239, 244, 255, 0.98);
   color: var(--accent-ink);
   border-radius: 999px;
-  padding: 9px 12px;
+  min-height: 38px;
+  padding: 0 14px;
   font: inherit;
   font-size: 12px;
   font-weight: 650;
@@ -811,6 +909,16 @@ body.drawer-open .profile-drawer {
 
 .quick-chip:hover {
   transform: translateY(-1px);
+}
+
+.form-generate-btn,
+.form-insert-btn {
+  min-height: 50px;
+  margin-top: 0;
+}
+
+.form-insert-btn {
+  margin-top: 0;
 }
 
 .file-card {
@@ -830,12 +938,4 @@ body.drawer-open .profile-drawer {
   font-weight: 620;
   color: #2b2724;
   word-break: break-word;
-}
-
-.context-preview {
-  margin: 12px 0 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--muted);
-  white-space: pre-wrap;
 }
