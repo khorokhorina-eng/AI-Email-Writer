@@ -28,122 +28,6 @@ const APP_BASE_URL = "https://mail.voicetext.world";
 const CONTEXT_STORAGE_KEY = "activeEmailContext";
 const DEVICE_TOKEN_STORAGE_KEY = "aiEmailWriterDeviceToken";
 const FREE_TRIAL_REPLIES = 15;
-const SUPPORTED_LANGUAGES = new Set(["en", "ru", "es", "fr", "de", "it", "pt", "tr"]);
-
-const COPY = {
-  en: {
-    opener: { Professional: "Hi,", Friendly: "Hi there,", Direct: "Hello," },
-    bodyLead: {
-      Professional: "Thank you for your email.",
-      Friendly: "Thanks for your message.",
-      Direct: "Thanks for the note."
-    },
-    toneNote: {
-      Professional: "Keep the reply polished, concise, and easy to act on.",
-      Friendly: "Keep the reply warm, natural, and helpful.",
-      Direct: "Keep the reply brief, clear, and action-oriented."
-    },
-    signoff: "Best,"
-  },
-  ru: {
-    opener: { Professional: "Здравствуйте,", Friendly: "Привет,", Direct: "Здравствуйте," },
-    bodyLead: {
-      Professional: "Спасибо за ваше письмо.",
-      Friendly: "Спасибо за сообщение.",
-      Direct: "Спасибо за письмо."
-    },
-    toneNote: {
-      Professional: "Сделай ответ аккуратным, кратким и понятным.",
-      Friendly: "Сделай ответ тёплым, естественным и полезным.",
-      Direct: "Сделай ответ коротким, ясным и по делу."
-    },
-    signoff: "С уважением,"
-  },
-  es: {
-    opener: { Professional: "Hola,", Friendly: "Hola,", Direct: "Hola," },
-    bodyLead: {
-      Professional: "Gracias por tu correo.",
-      Friendly: "Gracias por tu mensaje.",
-      Direct: "Gracias por la nota."
-    },
-    toneNote: {
-      Professional: "Mantén la respuesta clara, breve y profesional.",
-      Friendly: "Mantén la respuesta cálida, natural y útil.",
-      Direct: "Mantén la respuesta breve, clara y directa."
-    },
-    signoff: "Saludos,"
-  },
-  fr: {
-    opener: { Professional: "Bonjour,", Friendly: "Bonjour,", Direct: "Bonjour," },
-    bodyLead: {
-      Professional: "Merci pour votre email.",
-      Friendly: "Merci pour votre message.",
-      Direct: "Merci pour votre note."
-    },
-    toneNote: {
-      Professional: "Gardez une réponse claire, concise et soignée.",
-      Friendly: "Gardez une réponse chaleureuse, naturelle et utile.",
-      Direct: "Gardez une réponse brève, claire et directe."
-    },
-    signoff: "Bien à vous,"
-  },
-  de: {
-    opener: { Professional: "Hallo,", Friendly: "Hallo,", Direct: "Hallo," },
-    bodyLead: {
-      Professional: "Vielen Dank für Ihre E-Mail.",
-      Friendly: "Danke für deine Nachricht.",
-      Direct: "Danke für die Nachricht."
-    },
-    toneNote: {
-      Professional: "Halte die Antwort klar, knapp und professionell.",
-      Friendly: "Halte die Antwort freundlich, natürlich und hilfreich.",
-      Direct: "Halte die Antwort kurz, klar und direkt."
-    },
-    signoff: "Viele Grüße,"
-  },
-  it: {
-    opener: { Professional: "Ciao,", Friendly: "Ciao,", Direct: "Ciao," },
-    bodyLead: {
-      Professional: "Grazie per la tua email.",
-      Friendly: "Grazie per il messaggio.",
-      Direct: "Grazie per la nota."
-    },
-    toneNote: {
-      Professional: "Mantieni la risposta chiara, breve e professionale.",
-      Friendly: "Mantieni la risposta cordiale, naturale e utile.",
-      Direct: "Mantieni la risposta breve, chiara e diretta."
-    },
-    signoff: "Cordiali saluti,"
-  },
-  pt: {
-    opener: { Professional: "Olá,", Friendly: "Olá,", Direct: "Olá," },
-    bodyLead: {
-      Professional: "Obrigado pelo seu email.",
-      Friendly: "Obrigado pela mensagem.",
-      Direct: "Obrigado pela nota."
-    },
-    toneNote: {
-      Professional: "Mantenha a resposta clara, breve e profissional.",
-      Friendly: "Mantenha a resposta acolhedora, natural e útil.",
-      Direct: "Mantenha a resposta breve, clara e direta."
-    },
-    signoff: "Atenciosamente,"
-  },
-  tr: {
-    opener: { Professional: "Merhaba,", Friendly: "Merhaba,", Direct: "Merhaba," },
-    bodyLead: {
-      Professional: "E-postanız için teşekkür ederim.",
-      Friendly: "Mesajın için teşekkür ederim.",
-      Direct: "Not için teşekkürler."
-    },
-    toneNote: {
-      Professional: "Yanıtı net, kısa ve profesyonel tut.",
-      Friendly: "Yanıtı sıcak, doğal ve yardımcı tut.",
-      Direct: "Yanıtı kısa, net ve doğrudan tut."
-    },
-    signoff: "Saygılarımla,"
-  }
-};
 
 const state = {
   status: "Ready",
@@ -157,6 +41,7 @@ const state = {
     subject: "",
     preview: "",
     fullText: "",
+    language: "",
   },
   account: {
     signedIn: false,
@@ -231,23 +116,17 @@ function openExternalPage(url) {
   chrome.tabs.create({ url });
 }
 
-function normalizeLanguageCode(code) {
-  const normalized = String(code || "en").toLowerCase();
-  const shortCode = normalized.split("-")[0];
-  return SUPPORTED_LANGUAGES.has(shortCode) ? shortCode : "en";
-}
-
-async function detectDraftLanguage(text) {
+async function detectEmailLanguage(text) {
   const source = String(text || "").trim();
   if (!source) {
-    return "en";
+    return "";
   }
 
   try {
     const result = await chrome.i18n.detectLanguage(source);
-    return normalizeLanguageCode(result?.languages?.[0]?.language);
+    return String(result?.languages?.[0]?.language || "").trim();
   } catch (_error) {
-    return "en";
+    return "";
   }
 }
 
@@ -264,6 +143,7 @@ function renderContext(context) {
     subject: String(context?.subject || ""),
     preview: String(context?.preview || ""),
     fullText: String(context?.fullText || ""),
+    language: String(context?.language || ""),
   };
 }
 
@@ -327,33 +207,6 @@ function updateTrialUI() {
 
 async function loadTrialState() {
   state.trial = { repliesLeft: FREE_TRIAL_REPLIES };
-}
-
-async function consumeTrialReply() {
-  if (state.account.paid) {
-    return;
-  }
-  if (!state.deviceToken) {
-    await loadOrCreateDeviceToken();
-  }
-
-  const data = await apiRequest("/usage", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-device-token": state.deviceToken,
-    },
-    body: JSON.stringify({
-      device_token: state.deviceToken,
-      replies: 1,
-    }),
-  });
-
-  if (Number.isFinite(Number(data?.repliesLeft))) {
-    state.trial = {
-      repliesLeft: Math.max(0, Math.min(FREE_TRIAL_REPLIES, Math.floor(Number(data.repliesLeft)))),
-    };
-  }
 }
 
 async function loadStoredContext() {
@@ -504,10 +357,16 @@ async function refreshActivePageContext() {
     state.gmailAutoOpened = false;
     const response = await sendTabMessage(state.activeTabId, { type: "getComposeState" });
     const composeState = response?.state || {};
+    const fullText = String(composeState.emailContextFull || "");
+    const preview = String(composeState.emailContextPreview || "");
+    const subject = String(composeState.emailSubject || "");
+    const language = await detectEmailLanguage([subject, fullText, preview].filter(Boolean).join("\n"));
+
     renderContext({
-      subject: String(composeState.emailSubject || ""),
-      preview: String(composeState.emailContextPreview || ""),
-      fullText: String(composeState.emailContextFull || ""),
+      subject,
+      preview,
+      fullText,
+      language,
     });
 
     if (state.emailContext.preview || state.emailContext.subject) {
@@ -519,24 +378,6 @@ async function refreshActivePageContext() {
     await loadStoredContext();
     setStatus("Ready", "Open a Gmail email and click “Write with AI”.");
   }
-}
-
-function buildDraftBody({ languageCode, tone, taskPrompt, context }) {
-  const copy = COPY[normalizeLanguageCode(languageCode)] || COPY.en;
-  const preview = String(context?.preview || context?.fullText || "").trim();
-  const body = [
-    copy.opener[tone] || copy.opener.Professional,
-    "",
-    copy.bodyLead[tone] || copy.bodyLead.Professional,
-    taskPrompt ? taskPrompt.trim() : "",
-    preview ? `Context: ${preview}` : "",
-    copy.toneNote[tone] || copy.toneNote.Professional,
-    "",
-    copy.signoff,
-    "[Your name]",
-  ].filter(Boolean);
-
-  return body.join("\n");
 }
 
 async function generateDraft() {
@@ -551,27 +392,73 @@ async function generateDraft() {
     taskInputEl.focus();
     return null;
   }
-  const sourceText = [state.emailContext.subject, state.emailContext.fullText, state.emailContext.preview].filter(Boolean).join("\n");
-  const languageCode = await detectDraftLanguage(sourceText);
-  const body = buildDraftBody({
-    languageCode,
-    tone: toneSelectEl.value,
-    taskPrompt,
-    context: state.emailContext,
-  });
-
-  draftOutputEl.value = body;
-  await consumeTrialReply();
-  updateActionState();
-  if (isTrialExhausted()) {
-    setStatus("Draft ready", "This was your last free reply. Choose a plan to keep writing.");
-  } else {
-    setStatus("Draft ready", `Review the draft, then insert it into Gmail. ${state.trial.repliesLeft} free replies left.`);
+  if (!state.deviceToken) {
+    await loadOrCreateDeviceToken();
   }
-  return {
-    subject: buildReplySubject(state.emailContext.subject),
-    body,
-  };
+
+  const previousLabel = draftOutputEl.value.trim() ? "Regenerate reply" : "Generate reply";
+  generateBtn.disabled = true;
+  generateBtn.textContent = "Generating...";
+  setStatus("Generating", "Writing your reply...");
+
+  try {
+    const data = await apiRequest("/generate-reply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-device-token": state.deviceToken,
+      },
+      body: JSON.stringify({
+        device_token: state.deviceToken,
+        task: taskPrompt,
+        tone: toneSelectEl.value,
+        subject: state.emailContext.subject,
+        emailContext: state.emailContext.fullText || state.emailContext.preview,
+        sourceLanguage: state.emailContext.language,
+      }),
+    });
+
+    const subject = String(data?.subject || "").trim() || buildReplySubject(state.emailContext.subject);
+    const body = String(data?.body || "").trim();
+    if (!body) {
+      throw new Error("The reply came back empty.");
+    }
+
+    draftOutputEl.value = body;
+    state.account.paid = Boolean(data?.paid);
+    state.account.subscriptionStatus = String(data?.subscriptionStatus || state.account.subscriptionStatus || "none");
+    state.account.plan = String(data?.plan || state.account.plan || "");
+    if (Number.isFinite(Number(data?.repliesLeft))) {
+      state.trial = {
+        repliesLeft: Math.max(0, Math.min(FREE_TRIAL_REPLIES, Math.floor(Number(data.repliesLeft)))),
+      };
+    }
+
+    updateActionState();
+    if (state.account.paid) {
+      setStatus("Draft ready", "Review the draft, then insert it into Gmail.");
+    } else if (isTrialExhausted()) {
+      setStatus("Draft ready", "This was your last free reply. Choose a plan to keep writing.");
+    } else {
+      setStatus("Draft ready", `Review the draft, then insert it into Gmail. ${state.trial.repliesLeft} free replies left.`);
+    }
+
+    return { subject, body };
+  } catch (error) {
+    if (/not-enough-replies/i.test(String(error.message || ""))) {
+      state.trial = { repliesLeft: 0 };
+      updateUI();
+      setActiveScreen("paywall");
+      setStatus("Trial ended", "Your free trial is over. Choose a plan to keep writing replies.");
+      return null;
+    }
+
+    setStatus("Generation failed", error.message || "Unable to generate a reply right now.");
+    return null;
+  } finally {
+    generateBtn.textContent = previousLabel;
+    updateActionState();
+  }
 }
 
 async function insertDraft() {

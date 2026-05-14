@@ -40,6 +40,8 @@ function loadEnvFile() {
 loadEnvFile();
 
 const PORT = Number(process.env.PORT || 8787);
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const OPENAI_TEXT_MODEL = process.env.OPENAI_TEXT_MODEL || "gpt-4.1-mini";
 const FREE_TRIAL_REPLIES = Math.max(1, Number(process.env.FREE_TRIAL_REPLIES || 15));
 const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || "").replace(/\/+$/, "");
 
@@ -62,14 +64,12 @@ const PLAN_DEFINITIONS = [
     name: "Monthly plan",
     description: "Unlimited email writing and full access.",
     stripePriceId: STRIPE_MONTHLY_PRICE_ID,
-    includedMinutes: Math.max(1, Number(process.env.MONTHLY_MINUTES || 300)),
   },
   {
     id: "annual",
     name: "Annual plan",
     description: "Unlimited email writing and full access.",
     stripePriceId: STRIPE_ANNUAL_PRICE_ID,
-    includedMinutes: Math.max(1, Number(process.env.ANNUAL_MINUTES || 3600)),
   },
 ];
 
@@ -77,6 +77,12 @@ const STATE_PATH = path.join(__dirname, "auth-stripe-state.json");
 const GOOGLE_STATE_TTL_MS = 10 * 60 * 1000;
 
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
+
+const EMAIL_TONE_INSTRUCTIONS = {
+  Professional: "Write in a polished, concise, professional tone.",
+  Friendly: "Write in a warm, natural, friendly tone.",
+  Direct: "Write in a brief, clear, direct tone.",
+};
 
 function nowIso() {
   return new Date().toISOString();
@@ -615,112 +621,6 @@ function rememberAccountCustomer(state, accountId, customerId) {
   state.customerToAccount[customerId] = accountId;
 }
 
-function getIncludedMinutesForPlan(planId) {
-  return (
-    PLAN_DEFINITIONS.find((plan) => plan.id === planId)?.includedMinutes || 0
-  );
-}
-
-function getAccountUsagePeriodKey(subscription) {
-  const subscriptionId = subscription?.plan?.subscriptionId || "";
-  const periodEnd = subscription?.plan?.currentPeriodEnd || "open";
-  return subscriptionId ? `${subscriptionId}:${periodEnd}` : "";
-}
-
-function getOrCreateAccountPeriodUsage(state, accountId, subscription) {
-  const periodKey = getAccountUsagePeriodKey(subscription);
-  if (!accountId || !periodKey) {
-    return null;
-  }
-
-  const includedMinutes = getIncludedMinutesForPlan(subscription?.plan?.planId);
-  if (!includedMinutes) {
-    return null;
-  }
-
-  if (!state.accountUsageByPeriod[accountId]) {
-    state.accountUsageByPeriod[accountId] = {};
-  }
-
-  if (!state.accountUsageByPeriod[accountId][periodKey]) {
-    state.accountUsageByPeriod[accountId][periodKey] = {
-      subscriptionId: subscription.plan.subscriptionId || null,
-      planId: subscription.plan.planId || null,
-      periodKey,
-      periodEnd: subscription.plan.currentPeriodEnd || null,
-      includedMinutes,
-      includedSeconds: includedMinutes * 60,
-      minutesUsed: 0,
-      secondsUsed: 0,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    };
-  }
-
-  const usage = state.accountUsageByPeriod[accountId][periodKey];
-  usage.includedMinutes = includedMinutes;
-  usage.includedSeconds = includedMinutes * 60;
-  usage.planId = subscription.plan.planId || usage.planId || null;
-  usage.subscriptionId = subscription.plan.subscriptionId || usage.subscriptionId || null;
-  usage.periodEnd = subscription.plan.currentPeriodEnd || usage.periodEnd || null;
-  usage.minutesUsed = Math.max(0, Math.floor(Number(usage.minutesUsed) || 0));
-  usage.secondsUsed = Number.isFinite(Number(usage.secondsUsed))
-    ? Math.max(0, Math.floor(Number(usage.secondsUsed)))
-    : usage.minutesUsed * 60;
-  usage.updatedAt = usage.updatedAt || nowIso();
-  usage.createdAt = usage.createdAt || nowIso();
-  return usage;
-}
-
-function getPaidSecondsLeft(state, account, subscription) {
-  if (!account || !subscription?.active) {
-    return 0;
-  }
-
-  const usage = getOrCreateAccountPeriodUsage(state, account.id, subscription);
-  if (!usage) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-
-  return Math.max(0, usage.includedSeconds - usage.secondsUsed);
-}
-
-function displayMinutesFromSeconds(seconds) {
-  const safeSeconds = Number.isFinite(Number(seconds)) ? Math.max(0, Number(seconds)) : 0;
-  if (safeSeconds <= 0) {
-    return 0;
-  }
-  if (safeSeconds < 60) {
-    return 0;
-  }
-  return Math.max(1, Math.floor(safeSeconds / 60));
-}
-
-function deductPaidSeconds(state, account, subscription, seconds) {
-  const usage = getOrCreateAccountPeriodUsage(state, account?.id, subscription);
-  if (!usage) {
-    return true;
-  }
-  const secondsLeft = Math.max(0, usage.includedSeconds - usage.secondsUsed);
-  if (secondsLeft < seconds) {
-    return false;
-  }
-  usage.secondsUsed += seconds;
-  usage.minutesUsed = Math.floor(usage.secondsUsed / 60);
-  usage.updatedAt = nowIso();
-  return true;
-}
-
-function refundPaidSeconds(state, account, subscription, seconds) {
-  const usage = getOrCreateAccountPeriodUsage(state, account?.id, subscription);
-  if (!usage) {
-    return;
-  }
-  usage.secondsUsed = Math.max(0, usage.secondsUsed - seconds);
-  usage.minutesUsed = Math.floor(usage.secondsUsed / 60);
-  usage.updatedAt = nowIso();
-}
-
 async function ensureStripeCustomer(state, account) {
   const existingCustomerId = state.accountToCustomer[account.id];
   if (existingCustomerId) {
@@ -831,6 +731,96 @@ async function fetchGoogleUserInfo(accessToken) {
 
 function handleHealth(res) {
   sendJson(res, 200, { ok: true });
+}
+
+async function generateReplyWithOpenAI({ task, tone, subject, emailContext, sourceLanguage }) {
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not configured.");
+  }
+
+  const normalizedTone = EMAIL_TONE_INSTRUCTIONS[tone] ? tone : "Professional";
+  const prompt = [
+    "You write concise email replies for Gmail users.",
+    "Return valid JSON only with keys subject and body.",
+    "Do not wrap the response in markdown.",
+    sourceLanguage
+      ? `Reply in this language by default: ${sourceLanguage}. Only use a different language if the user instruction explicitly asks for it.`
+      : "Reply in the same language as the source email by default. Only use a different language if the user instruction explicitly asks for it.",
+    EMAIL_TONE_INSTRUCTIONS[normalizedTone],
+    subject ? `Current email subject: ${subject}` : "",
+    emailContext ? `Current email content:\n${emailContext}` : "",
+    `User instruction: ${task}`,
+    "If the current email already has a subject, keep it as a reply-style subject.",
+    "The body must be ready to insert into Gmail as plain text.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: OPENAI_TEXT_MODEL,
+      temperature: 0.5,
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "email_reply",
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              subject: { type: "string" },
+              body: { type: "string" },
+            },
+            required: ["subject", "body"],
+          },
+        },
+      },
+      messages: [
+        {
+          role: "system",
+          content: "You are an assistant that writes ready-to-send email replies.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    throw new Error(details || `OpenAI request failed with ${response.status}`);
+  }
+
+  const data = await response.json();
+  const rawContent = data?.choices?.[0]?.message?.content || "";
+  if (!rawContent) {
+    throw new Error("OpenAI returned an empty reply.");
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(rawContent);
+  } catch (_error) {
+    throw new Error("OpenAI returned invalid JSON.");
+  }
+
+  const replySubject = String(parsed?.subject || "").trim();
+  const replyBody = String(parsed?.body || "").trim();
+  if (!replyBody) {
+    throw new Error("OpenAI returned an empty email body.");
+  }
+
+  return {
+    subject: replySubject,
+    body: replyBody,
+  };
 }
 
 async function handleAuthMe(req, res, parsedUrl) {
@@ -1560,6 +1550,93 @@ async function handlePlaybackUsage(req, res, parsedUrl) {
   });
 }
 
+async function handleGenerateReply(req, res, parsedUrl) {
+  let body;
+  try {
+    body = await parseJsonBody(req);
+  } catch (error) {
+    sendJson(res, 400, { error: error.message || "Invalid request body." });
+    return;
+  }
+
+  const deviceToken = getDeviceToken(req, parsedUrl, body);
+  const task = String(body.task || "").trim();
+  const tone = String(body.tone || "Professional").trim();
+  const subject = String(body.subject || "").trim();
+  const emailContext = String(body.emailContext || "").trim();
+  const sourceLanguage = String(body.sourceLanguage || "").trim();
+
+  if (!deviceToken) {
+    sendJson(res, 400, { error: "Missing device token." });
+    return;
+  }
+
+  if (!task) {
+    sendJson(res, 400, { error: "Task is required." });
+    return;
+  }
+
+  const state = readState();
+  const account = getAccountForDevice(state, deviceToken);
+  const subscription = await lookupSubscriptionStatusForAccount(state, account);
+  const repliesLeftBefore = subscription.active
+    ? 0
+    : getFreeTrialRemainingReplies(state, account, deviceToken);
+
+  if (!subscription.active && repliesLeftBefore <= 0) {
+    sendJson(res, 402, {
+      error: "not-enough-replies",
+      paid: false,
+      subscriptionStatus: subscription.status || "none",
+      plan: subscription.plan?.planId || null,
+      repliesLeft: 0,
+      freeTrialReplies: FREE_TRIAL_REPLIES,
+    });
+    return;
+  }
+
+  try {
+    const draft = await generateReplyWithOpenAI({
+      task,
+      tone,
+      subject,
+      emailContext,
+      sourceLanguage,
+    });
+
+    if (!subscription.active) {
+      const deducted = deductFreeTrialReplies(state, account, deviceToken, 1);
+      if (!deducted) {
+        sendJson(res, 402, {
+          error: "not-enough-replies",
+          paid: false,
+          subscriptionStatus: subscription.status || "none",
+          plan: subscription.plan?.planId || null,
+          repliesLeft: 0,
+          freeTrialReplies: FREE_TRIAL_REPLIES,
+        });
+        return;
+      }
+      writeState(state);
+    }
+
+    const repliesLeft = subscription.active
+      ? 0
+      : getFreeTrialRemainingReplies(state, account, deviceToken);
+
+    sendJson(res, 200, {
+      ...draft,
+      paid: subscription.active,
+      subscriptionStatus: subscription.status || "none",
+      plan: subscription.plan?.planId || null,
+      repliesLeft,
+      freeTrialReplies: FREE_TRIAL_REPLIES,
+    });
+  } catch (error) {
+    sendJson(res, 502, { error: error.message || "Failed to generate reply." });
+  }
+}
+
 async function handleSubscriptionStatus(req, res, parsedUrl) {
   if (!ensureStripeConfigured(res)) {
     return;
@@ -1662,10 +1739,6 @@ async function handleStripeWebhook(req, res) {
   } catch (error) {
     sendJson(res, 500, { error: error.message || "Webhook handler failed." });
   }
-}
-
-async function handleTts(req, res, parsedUrl) {
-  sendJson(res, 410, { error: "TTS is not supported by AI Email Writer." });
 }
 
 async function handleAnalyticsEvent(req, res, parsedUrl) {
@@ -1808,13 +1881,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.method === "POST" && parsedUrl.pathname === "/tts") {
-    await handleTts(req, res, parsedUrl);
+  if (req.method === "POST" && parsedUrl.pathname === "/usage") {
+    await handlePlaybackUsage(req, res, parsedUrl);
     return;
   }
 
-  if (req.method === "POST" && parsedUrl.pathname === "/usage") {
-    await handlePlaybackUsage(req, res, parsedUrl);
+  if (req.method === "POST" && parsedUrl.pathname === "/generate-reply") {
+    await handleGenerateReply(req, res, parsedUrl);
     return;
   }
 

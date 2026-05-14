@@ -22,7 +22,7 @@
         <p class="eyebrow">Privacy Policy</p>
         <h1>How AI Email Writer processes your data.</h1>
         <p class="lead">
-          This service helps draft Gmail replies and manages account access through a device token and Stripe billing.
+          This service drafts Gmail replies with AI and manages account access through a device token and Stripe billing.
         </p>
       </section>
 
@@ -31,6 +31,7 @@
           <h3>What the extension does</h3>
           <ul class="list">
             <li>Reads the current Gmail thread in the browser to prepare a draft reply.</li>
+            <li>Sends the selected Gmail context and your task to our backend so the AI model can generate a reply.</li>
             <li>Keeps the drafting workflow inside the extension and Gmail page.</li>
             <li>Stores a device token and limited billing state to manage free usage, subscriptions, and purchases.</li>
           </ul>
@@ -39,7 +40,7 @@
         <article class="content-card">
           <h3>What data is processed</h3>
           <ul class="list">
-            <li>Email subject and visible Gmail thread context needed to prepare a draft reply.</li>
+            <li>Email subject, visible Gmail thread context, and the task you enter for the AI.</li>
             <li>A device token used to identify usage limits and subscription state.</li>
             <li>Billing-related identifiers when a user starts or manages a paid plan through Stripe.</li>
             <li>Support request details if the user contacts support.</li>
@@ -49,7 +50,7 @@
         <article class="content-card">
           <h3>How data is used</h3>
           <ul class="list">
-            <li>To prepare and insert reply drafts in Gmail.</li>
+            <li>To prepare and insert AI-generated reply drafts in Gmail.</li>
             <li>To enforce free usage limits and paid subscription rules.</li>
             <li>To process payments and subscription access through Stripe.</li>
             <li>To respond to support requests.</li>
@@ -59,6 +60,7 @@
         <article class="content-card">
           <h3>Third parties</h3>
           <ul class="list">
+            <li>OpenAI to generate email replies from the Gmail context and task you provide.</li>
             <li>Stripe for checkout, billing, and subscription management.</li>
           </ul>
         </article>
