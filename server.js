@@ -79,9 +79,12 @@ const GOOGLE_STATE_TTL_MS = 10 * 60 * 1000;
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
 const EMAIL_TONE_INSTRUCTIONS = {
-  Professional: "Write in a polished, concise, professional tone.",
-  Friendly: "Write in a warm, natural, friendly tone.",
-  Direct: "Write in a brief, clear, direct tone.",
+  Professional:
+    "Write in a formal, polished, business-appropriate tone. Use complete sentences, clear structure, respectful wording, and a confident professional close. Avoid slang, jokes, and overly casual phrasing.",
+  Friendly:
+    "Write in a warm, natural, approachable tone. Sound human and conversational, use softer phrasing, and keep the reply supportive and easy to read without becoming informal or unprofessional.",
+  Direct:
+    "Write in the shortest clear version possible. Be concise, action-focused, and straightforward. Keep greetings and closings minimal, remove filler, and get to the main point quickly.",
 };
 
 function nowIso() {
