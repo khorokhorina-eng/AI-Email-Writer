@@ -64,6 +64,7 @@ const state = {
   trialExhaustedTracked: false,
   isAuthenticating: false,
   authReturnScreen: "drawer",
+  authPollTimer: null,
 };
 
 function updateUI() {
@@ -125,6 +126,24 @@ function sendTabMessage(tabId, message) {
 
 function openExternalPage(url) {
   chrome.tabs.create({ url });
+}
+
+function stopAuthPolling() {
+  if (state.authPollTimer) {
+    window.clearInterval(state.authPollTimer);
+    state.authPollTimer = null;
+  }
+}
+
+function startAuthPolling() {
+  stopAuthPolling();
+  state.authPollTimer = window.setInterval(() => {
+    if (!state.isAuthenticating) {
+      stopAuthPolling();
+      return;
+    }
+    void loadAccountState().then(updateUI);
+  }, 1500);
 }
 
 function setPaywallStatus(message) {
@@ -367,6 +386,7 @@ async function loadAccountState() {
   }
 
   if (state.isAuthenticating && state.account.signedIn) {
+    stopAuthPolling();
     state.isAuthenticating = false;
     if (state.authReturnScreen === "paywall") {
       setActiveScreen("paywall");
@@ -396,6 +416,7 @@ async function signInWithGoogle(targetScreen = "drawer", source = "unknown") {
 
   try {
     const returnUrl = await getActiveTabUrl();
+    startAuthPolling();
     openExternalPage(
       `${APP_BASE_URL}/auth/google/start?device_token=${encodeURIComponent(state.deviceToken)}&return_url=${encodeURIComponent(returnUrl)}`
     );
@@ -403,6 +424,7 @@ async function signInWithGoogle(targetScreen = "drawer", source = "unknown") {
     setStatus("Opening Google", "Complete sign-in in the opened tab.");
     closeDrawer();
   } catch (error) {
+    stopAuthPolling();
     state.isAuthenticating = false;
     setStatus("Login unavailable", error.message || "Unable to start Google sign-in.");
   }
