@@ -219,6 +219,7 @@ function createEmptyState() {
     customerToAccount: {},
     sessionToAccount: {},
     sessionToReturnUrl: {},
+    purchaseEventsSent: {},
     googleStates: {},
   };
 }
@@ -238,6 +239,35 @@ function cleanupState(state) {
       delete state.googleStates[token];
     }
   });
+
+  Object.entries(state.purchaseEventsSent || {}).forEach(([sessionId, sentAt]) => {
+    const timestamp = Date.parse(sentAt || "");
+    if (!Number.isFinite(timestamp) || timestamp < now - 1000 * 60 * 60 * 24 * 30) {
+      delete state.purchaseEventsSent[sessionId];
+    }
+  });
+}
+
+function buildPurchaseAnalyticsParamsFromSession(session, planLookup, fallbackPlanId, fallbackPlanName) {
+  const planId =
+    session?.metadata?.planId ||
+    session?.subscription_details?.metadata?.planId ||
+    fallbackPlanId;
+  const planName = planLookup(planId)?.name || fallbackPlanName;
+  const amount = Number(session?.amount_total || 0) / 100;
+  return {
+    transaction_id: String(session?.id || ""),
+    value: amount,
+    currency: String(session?.currency || "usd").toUpperCase(),
+    items: [
+      {
+        item_id: String(planId || fallbackPlanId),
+        item_name: String(planName),
+        price: amount,
+        quantity: 1,
+      },
+    ],
+  };
 }
 
 function readState() {
@@ -1721,6 +1751,29 @@ async function handleStripeWebhook(req, res) {
         "";
       const customerId = typeof session.customer === "string" ? session.customer : "";
       rememberAccountCustomer(state, accountId, customerId);
+      if (!state.purchaseEventsSent?.[session.id]) {
+        const purchaseParams = buildPurchaseAnalyticsParamsFromSession(
+          session,
+          getPlanById,
+          "ai-email-writer-plan",
+          "AI Email Writer plan"
+        );
+        await sendGa4Measurement({
+          clientId: session.metadata?.deviceToken || customerId || session.id,
+          userId: accountId || "",
+          sessionId: session.id,
+          eventName: "purchase",
+          params: {
+            product: "ai_email_writer",
+            signed_in: Boolean(accountId),
+            ...purchaseParams,
+          },
+        });
+        console.log(
+          `[analytics] purchase sent to GA4 product=ai_email_writer session_id=${session.id} account_id=${accountId || "none"}`
+        );
+        state.purchaseEventsSent[session.id] = nowIso();
+      }
     }
 
     if (
@@ -1737,6 +1790,12 @@ async function handleStripeWebhook(req, res) {
     writeState(state);
     sendJson(res, 200, { received: true });
   } catch (error) {
+    if (event?.type === "checkout.session.completed") {
+      const sessionId = event?.data?.object?.id || "unknown";
+      console.error(
+        `[analytics] purchase failed to send to GA4 product=ai_email_writer session_id=${sessionId}: ${error.message || error}`
+      );
+    }
     sendJson(res, 500, { error: error.message || "Webhook handler failed." });
   }
 }

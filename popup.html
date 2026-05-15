@@ -19,7 +19,7 @@
         <div class="drawer-summary-card">
           <div class="drawer-summary-block">
             <p class="drawer-label">Account</p>
-            <p class="drawer-email">Guest mode</p>
+            <p id="drawerEmail" class="drawer-email">Guest mode</p>
           </div>
           <div class="drawer-summary-divider" aria-hidden="true"></div>
           <div class="drawer-summary-block">
@@ -66,6 +66,13 @@
             <button id="refreshContextBtn" class="context-refresh-btn" type="button">Refresh</button>
           </section>
 
+          <section id="trialEndedCard" class="trial-ended-card hidden">
+            <p class="trial-ended-eyebrow">Trial ended</p>
+            <h2 class="trial-ended-title">Your free replies are used up</h2>
+            <p id="trialEndedCopy" class="trial-ended-copy">Sign in with Google to choose a plan and keep writing replies.</p>
+            <button id="trialEndedActionBtn" class="upgrade-cta">Sign in with Google</button>
+          </section>
+
           <section class="email-form-card form-card">
             <div class="field-group">
               <label class="field-label" for="taskInput">Task for AI</label>
@@ -103,7 +110,7 @@
             </div>
           </div>
 
-          <p class="paywall-status">Keep writing replies in Gmail with a paid plan.</p>
+          <p id="paywallStatus" class="paywall-status">Keep writing replies in Gmail with a paid plan.</p>
 
           <section class="paywall-card">
             <h3 class="paywall-plan-title">Monthly</h3>

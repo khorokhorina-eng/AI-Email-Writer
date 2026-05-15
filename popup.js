@@ -10,6 +10,9 @@ const refreshContextBtn = document.getElementById("refreshContextBtn");
 const insertDraftBtn = document.getElementById("insertDraftBtn");
 const generateBtn = document.getElementById("generateBtn");
 const openPaywallBtn = document.getElementById("openPaywallBtn");
+const trialEndedCardEl = document.getElementById("trialEndedCard");
+const trialEndedCopyEl = document.getElementById("trialEndedCopy");
+const trialEndedActionBtn = document.getElementById("trialEndedActionBtn");
 const monthlyPlanBtn = document.getElementById("monthlyPlanBtn");
 const yearlyPlanBtn = document.getElementById("yearlyPlanBtn");
 const profileTriggerBtn = document.getElementById("profileTrigger");
@@ -17,11 +20,14 @@ const closeDrawerBtn = document.getElementById("closeDrawer");
 const drawerBackdropEl = document.getElementById("drawerBackdrop");
 const drawerUpgradeBtn = document.getElementById("drawerUpgrade");
 const accountActionBtn = document.getElementById("accountAction");
+const drawerEmailEl = document.getElementById("drawerEmail");
 const drawerPlanNameEl = document.getElementById("drawerPlanName");
 const drawerPlanMetaEl = document.getElementById("drawerPlanMeta");
 const backToReaderBtn = document.getElementById("backToReader");
 const readerScreenEl = document.getElementById("readerScreen");
 const paywallScreenEl = document.getElementById("paywallScreen");
+const paywallStatusEl = document.getElementById("paywallStatus");
+const emailFormCardEl = document.querySelector(".email-form-card");
 
 const GMAIL_INBOX_URL = "https://mail.google.com/mail/u/0/#inbox";
 const APP_BASE_URL = "https://mail.voicetext.world";
@@ -53,6 +59,11 @@ const state = {
   trial: {
     repliesLeft: FREE_TRIAL_REPLIES,
   },
+  analyticsSessionId: `aiew_${Date.now()}`,
+  contextTracked: false,
+  trialExhaustedTracked: false,
+  isAuthenticating: false,
+  authReturnScreen: "drawer",
 };
 
 function updateUI() {
@@ -116,6 +127,41 @@ function openExternalPage(url) {
   chrome.tabs.create({ url });
 }
 
+function setPaywallStatus(message) {
+  if (paywallStatusEl) {
+    paywallStatusEl.textContent = message;
+  }
+}
+
+async function getActiveTabUrl() {
+  const tab = await queryActiveTab();
+  return String(tab?.url || "");
+}
+
+async function trackEvent(name, params = {}) {
+  if (!state.deviceToken) {
+    await loadOrCreateDeviceToken();
+  }
+
+  try {
+    await apiRequest("/analytics/event", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-device-token": state.deviceToken,
+      },
+      body: JSON.stringify({
+        device_token: state.deviceToken,
+        name,
+        session_id: state.analyticsSessionId,
+        params,
+      }),
+    });
+  } catch (_error) {
+    // Best effort only.
+  }
+}
+
 async function detectEmailLanguage(text) {
   const source = String(text || "").trim();
   if (!source) {
@@ -145,6 +191,9 @@ function renderContext(context) {
     fullText: String(context?.fullText || ""),
     language: String(context?.language || ""),
   };
+  if (!state.emailContext.subject) {
+    state.contextTracked = false;
+  }
 }
 
 function updateContextUI() {
@@ -156,9 +205,13 @@ function updateContextUI() {
 
 function updateActionState() {
   const hasDraft = Boolean(draftOutputEl.value.trim());
+  const exhausted = isTrialExhausted();
   insertDraftBtn.disabled = !hasDraft;
   generateBtn.textContent = hasDraft ? "Regenerate reply" : "Generate reply";
-  if (isTrialExhausted()) {
+  taskInputEl.disabled = exhausted;
+  toneSelectEl.disabled = exhausted;
+  emailFormCardEl.classList.toggle("is-locked", exhausted);
+  if (exhausted) {
     generateBtn.disabled = true;
     insertDraftBtn.disabled = !hasDraft;
   } else {
@@ -178,10 +231,21 @@ function updateTrialUI() {
   openPaywallBtn.classList.toggle("hidden", paid || !exhausted);
   drawerUpgradeBtn.classList.toggle("hidden", paid || !exhausted);
   accountActionBtn.textContent = signedIn ? "Sign out" : "Sign in with Google";
+  drawerEmailEl.textContent = signedIn ? state.account.email || "Signed in" : "Guest mode";
+  monthlyPlanBtn.textContent = signedIn ? "Subscribe monthly" : "Sign in with Google";
+  yearlyPlanBtn.textContent = signedIn ? "Subscribe yearly" : "Sign in with Google";
+  trialEndedCardEl.classList.toggle("hidden", paid || !exhausted);
+  if (!paid && exhausted) {
+    trialEndedCopyEl.textContent = signedIn
+      ? "Choose a plan to unlock unlimited email writing."
+      : "Sign in with Google to choose a plan and keep writing replies.";
+    trialEndedActionBtn.textContent = signedIn ? "View plans" : "Sign in with Google";
+  }
 
   if (paid) {
     drawerPlanNameEl.textContent = "Premium";
     drawerPlanMetaEl.textContent = "Unlimited email writing is active on this account.";
+    setPaywallStatus("Your premium plan is active.");
     if (state.activeScreen === "reader") {
       statusEl.textContent = state.status === "Trial ended" ? "Ready" : state.status;
     }
@@ -196,13 +260,26 @@ function updateTrialUI() {
     : exhausted
       ? "Your 15 free replies are used up. Upgrade to keep writing."
       : `${repliesLeft} of ${FREE_TRIAL_REPLIES} free replies left.`;
+  setPaywallStatus(
+    signedIn
+      ? "Choose a plan to unlock unlimited email writing."
+      : "Sign in with Google before checkout."
+  );
   if (exhausted) {
+    if (!state.trialExhaustedTracked) {
+      state.trialExhaustedTracked = true;
+      void trackEvent("trial_exhausted", {
+        replies_left: 0,
+      });
+    }
     if (state.activeScreen === "reader") {
       statusEl.textContent = "Trial ended";
       hintEl.textContent = "Your free trial is over. Choose a plan to keep writing replies.";
     }
     return;
   }
+
+  state.trialExhaustedTracked = false;
 }
 
 async function loadTrialState() {
@@ -263,6 +340,7 @@ async function loadAccountState() {
     await loadOrCreateDeviceToken();
   }
 
+  const wasSignedIn = Boolean(state.account.signedIn);
   try {
     const data = await apiRequest(`/auth/me?device_token=${encodeURIComponent(state.deviceToken)}`);
     state.account = {
@@ -287,13 +365,47 @@ async function loadAccountState() {
     };
     state.trial = { repliesLeft: FREE_TRIAL_REPLIES };
   }
+
+  if (state.isAuthenticating && state.account.signedIn) {
+    state.isAuthenticating = false;
+    if (state.authReturnScreen === "paywall") {
+      setActiveScreen("paywall");
+      closeDrawer();
+      setPaywallStatus("Signed in. Choose your plan to continue.");
+    } else {
+      openDrawer();
+    }
+    setStatus("Signed in", `Signed in as ${state.account.email || "your account"}.`);
+  } else if (!state.account.signedIn && wasSignedIn) {
+    setStatus("Signed out", "Sign in again before checkout.");
+    setPaywallStatus("Continue with Google before checkout.");
+  }
 }
 
-async function startGoogleSignIn() {
+async function signInWithGoogle(targetScreen = "drawer", source = "unknown") {
   if (!state.deviceToken) {
     await loadOrCreateDeviceToken();
   }
-  openExternalPage(`${APP_BASE_URL}/auth/google/start?device_token=${encodeURIComponent(state.deviceToken)}`);
+
+  state.isAuthenticating = true;
+  state.authReturnScreen = targetScreen === "paywall" ? "paywall" : "drawer";
+  void trackEvent("login_started", {
+    source,
+    target_screen: state.authReturnScreen,
+  });
+
+  try {
+    const returnUrl = await getActiveTabUrl();
+    openExternalPage(
+      `${APP_BASE_URL}/auth/google/start?device_token=${encodeURIComponent(state.deviceToken)}&return_url=${encodeURIComponent(returnUrl)}`
+    );
+    setPaywallStatus("Complete Google sign-in in the opened tab.");
+    setStatus("Opening Google", "Complete sign-in in the opened tab.");
+    closeDrawer();
+  } catch (error) {
+    state.isAuthenticating = false;
+    setStatus("Login unavailable", error.message || "Unable to start Google sign-in.");
+  }
 }
 
 async function signOutAccount() {
@@ -316,6 +428,8 @@ async function startCheckout(planId) {
     await loadOrCreateDeviceToken();
   }
 
+  const returnUrl = await getActiveTabUrl();
+
   const data = await apiRequest("/checkout", {
     method: "POST",
     headers: {
@@ -325,6 +439,7 @@ async function startCheckout(planId) {
     body: JSON.stringify({
       device_token: state.deviceToken,
       plan: planId,
+      return_url: returnUrl,
     }),
   });
 
@@ -333,6 +448,32 @@ async function startCheckout(planId) {
   }
 
   openExternalPage(String(data.url));
+}
+
+function openPaywall(source = "unknown") {
+  setActiveScreen("paywall");
+  closeDrawer();
+  void trackEvent("paywall_opened", {
+    source,
+    signed_in: Boolean(state.account.signedIn),
+    replies_left: Math.max(0, Number(state.trial.repliesLeft || 0)),
+  });
+  setPaywallStatus(
+    state.account.signedIn
+      ? "Choose a plan to unlock unlimited email writing."
+      : "Continue with Google before checkout."
+  );
+}
+
+async function openCheckoutForPlan(planId) {
+  if (!state.account.signedIn) {
+    setPaywallStatus("Sign in with Google before checkout.");
+    await signInWithGoogle("paywall", `checkout_${planId}`);
+    return;
+  }
+
+  void trackEvent("checkout_started", { plan_id: planId });
+  await startCheckout(planId);
 }
 
 async function refreshActivePageContext() {
@@ -370,6 +511,13 @@ async function refreshActivePageContext() {
     });
 
     if (state.emailContext.preview || state.emailContext.subject) {
+      if (!state.contextTracked) {
+        state.contextTracked = true;
+        void trackEvent("gmail_context_loaded", {
+          has_subject: Boolean(state.emailContext.subject),
+          language: state.emailContext.language || "",
+        });
+      }
       setStatus("Email loaded", "Describe what the reply should do, then generate and insert it.");
     } else {
       setStatus("Ready", "Open a Gmail email and click “Write with AI”.");
@@ -400,6 +548,11 @@ async function generateDraft() {
   generateBtn.disabled = true;
   generateBtn.textContent = "Generating...";
   setStatus("Generating", "Writing your reply...");
+  void trackEvent("generate_clicked", {
+    tone: toneSelectEl.value,
+    has_subject: Boolean(state.emailContext.subject),
+    language: state.emailContext.language || "",
+  });
 
   try {
     const data = await apiRequest("/generate-reply", {
@@ -433,6 +586,12 @@ async function generateDraft() {
         repliesLeft: Math.max(0, Math.min(FREE_TRIAL_REPLIES, Math.floor(Number(data.repliesLeft)))),
       };
     }
+    void trackEvent("reply_generated", {
+      tone: toneSelectEl.value,
+      paid: Boolean(data?.paid),
+      replies_left: Number.isFinite(Number(data?.repliesLeft)) ? Math.max(0, Math.floor(Number(data.repliesLeft))) : "",
+      language: state.emailContext.language || "",
+    });
 
     updateActionState();
     if (state.account.paid) {
@@ -487,6 +646,10 @@ async function insertDraft() {
     }
 
     setStatus("Inserted", "Draft inserted into Gmail.");
+    void trackEvent("insert_clicked", {
+      has_subject: Boolean(draft.subject),
+      body_length: draft.body.length,
+    });
   } catch (_error) {
     setStatus("Needs Gmail", "Open Gmail and click the composer button before inserting a draft.");
   }
@@ -495,6 +658,11 @@ async function insertDraft() {
 function initializePopup() {
   void Promise.all([loadTrialState(), loadOrCreateDeviceToken(), loadAccountState()]).then(() => {
     updateUI();
+    void trackEvent("extension_opened", {
+      signed_in: Boolean(state.account.signedIn),
+      paid: Boolean(state.account.paid),
+      replies_left: Math.max(0, Number(state.trial.repliesLeft || 0)),
+    });
     void refreshActivePageContext();
   });
 
@@ -509,7 +677,16 @@ function initializePopup() {
   });
 
   openPaywallBtn.addEventListener("click", () => {
-    setActiveScreen("paywall");
+    void trackEvent("upgrade_clicked", { source: "reader_button" });
+    openPaywall("reader_button");
+  });
+  trialEndedActionBtn.addEventListener("click", () => {
+    if (state.account.signedIn) {
+      void trackEvent("upgrade_clicked", { source: "trial_ended_card" });
+      openPaywall("trial_ended_card");
+      return;
+    }
+    void signInWithGoogle("paywall", "trial_ended_card");
   });
   refreshContextBtn.addEventListener("click", () => {
     void refreshActivePageContext();
@@ -519,12 +696,12 @@ function initializePopup() {
   });
 
   monthlyPlanBtn.addEventListener("click", () => {
-    void startCheckout("monthly").catch((error) => {
+    void openCheckoutForPlan("monthly").catch((error) => {
       setStatus("Checkout unavailable", error.message || "Unable to open checkout.");
     });
   });
   yearlyPlanBtn.addEventListener("click", () => {
-    void startCheckout("annual").catch((error) => {
+    void openCheckoutForPlan("annual").catch((error) => {
       setStatus("Checkout unavailable", error.message || "Unable to open checkout.");
     });
   });
@@ -533,7 +710,8 @@ function initializePopup() {
   closeDrawerBtn.addEventListener("click", closeDrawer);
   drawerBackdropEl.addEventListener("click", closeDrawer);
   drawerUpgradeBtn.addEventListener("click", () => {
-    setActiveScreen("paywall");
+    void trackEvent("upgrade_clicked", { source: "drawer_button" });
+    openPaywall("drawer_button");
     closeDrawer();
   });
   accountActionBtn.addEventListener("click", () => {
@@ -548,7 +726,7 @@ function initializePopup() {
         });
       return;
     }
-    void startGoogleSignIn();
+    void signInWithGoogle("drawer", "drawer_button");
   });
 
   window.addEventListener("focus", () => {

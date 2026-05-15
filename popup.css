@@ -183,6 +183,7 @@ body {
 
 .hero-card,
 .context-bar,
+.trial-ended-card,
 .trial-banner,
 .reader-controls,
 .auth-panel,
@@ -285,6 +286,39 @@ body {
 .context-refresh-btn:hover:not(:disabled) {
   transform: none;
   background: #fff;
+}
+
+.trial-ended-card {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-color: rgba(220, 91, 59, 0.22);
+  background: linear-gradient(180deg, rgba(255, 248, 245, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
+}
+
+.trial-ended-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #b14b34;
+}
+
+.trial-ended-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: #202124;
+}
+
+.trial-ended-copy {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
 }
 
 .trial-banner {
@@ -817,6 +851,10 @@ body.drawer-open .profile-drawer {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.form-card.is-locked {
+  opacity: 0.62;
 }
 
 .field-note {
