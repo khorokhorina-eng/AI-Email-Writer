@@ -1,11 +1,11 @@
 {
   "appName": {
-    "message": "AI Email Writer"
+    "message": "AI 邮件写作助手"
   },
   "shortDesc": {
-    "message": "Write emails from short prompts and insert them into email fields in your browser."
+    "message": "适用于 Gmail 的 AI 邮件写作助手：帮助您直接在浏览器中撰写回复和创建邮件草稿。"
   },
   "storeDesc": {
-    "message": "AI Email Writer helps you turn short prompts into ready-to-send emails in your browser. Open the side panel, describe what you want to say, generate a draft, and insert it into the current email field."
+    "message": "🚀 AI 邮件写作助手 — 在 Gmail 中更快地撰写和回复\nAI 邮件写作助手是一个 Chrome 扩展，旨在帮助用户直接在 Gmail 中创建草稿和准备回复。\n您无需每次都从空白草稿开始，可以根据当前对话生成文本，继续工作而不打断您的思路。\n该扩展专注于一个实用的任务：使在 Gmail 中创建回复更快、更简单。\n✨ AI 邮件写作助手的工作原理\n1️⃣ 打开 Gmail\n2️⃣ 打开对话或开始新的草稿\n3️⃣ 点击“使用 AI 撰写”按钮\n4️⃣ 描述您想要表达的内容\n5️⃣ 选择可用的语气选项\n6️⃣ 生成并将结果插入到 Gmail 中\n简单的工作流程。最少的步骤。\n📌 为 Gmail 中更快的回复而构建\nAI 邮件写作助手集成到 Gmail 中，帮助缩短准备回复的时间。\n该扩展可以：\n➤ 根据您的指示生成草稿文本\n➤ 使用当前打开对话的上下文\n➤ 建议回复内容\n➤ 将生成的文本插入到草稿字段\n➤ 帮助简化日常沟通\n目标不是替代您的写作过程 — 而是帮助您更快地移动，减少重复编辑。\n💡 常见用例\n💼 工作沟通\n更快地准备对同事、合作伙伴和客户的回复。\n📅 跟进\n为正在进行的对话生成草稿。\n📨 收件箱管理\n减少重复沟通中的手动写作。\n🧑‍💻 日常工作流程\n加快例行通信，同时保持对最终结果的控制。\n🎯 主要功能\n🔹 AI 邮件回复\n使用您的提示和当前 Gmail 上下文生成草稿回复。\n🔹 AI 邮件写作\n创建新草稿而无需从头开始。\n🔹 邮件写作生成器\n根据简短指示生成完整草稿。\n🔹 邮件回复生成器\n准备建议文本并在发送前进行编辑。\n🔹 邮件 AI 助手\n在 Gmail 中直接使用引导草拟功能。\n⚡ 设计简单的流程\n➤ 打开 Gmail\n➤ 生成文本\n➤ 审核\n➤ 如有需要进行调整\n➤ 发送\n无需复杂的设置。\n📍 用户选择 AI 邮件写作助手的原因\n减少重复打字\n更快地准备草稿\n保持在 Gmail 内部\n简化回复创建\n在发送前保持最终控制\n减少日常工作\n💬 常见问题\n❓ 该扩展在 Gmail 之外工作吗？\n💡 AI 邮件写作助手专为 Gmail 工作流程设计。\n❓ 它会自动发送消息吗？\n💡 不会。生成的内容会插入到草稿中，并保持可编辑状态。\n❓ 它能理解当前对话吗？\n💡 该扩展可以使用打开的 Gmail 线程中的上下文来帮助生成相关草稿。\n❓ 我可以编辑生成的文本吗？\n💡 可以。您在发送前保持控制。\n❓ 我需要账户吗？\n💡 登录是访问生成功能和可用计划所必需的。\n❓ 有免费试用吗？\n💡 根据当前提供情况，可能会提供试用访问和付费计划。\n🌟 优势\n📌 更快的回复工作流程\n📌 更少的重复写作\n📌 更容易的草稿准备\n📌 更高效的收件箱处理\n📌 减少手动工作\n📌 更顺畅的 Gmail 体验\nAI 邮件写作助手帮助用户在 Gmail 中以更少的手动步骤和更快的工作流程准备回复和草稿。"
   }
 }

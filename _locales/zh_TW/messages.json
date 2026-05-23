@@ -1,11 +1,11 @@
 {
   "appName": {
-    "message": "AI Email Writer"
+    "message": "AI 電子郵件撰寫器"
   },
   "shortDesc": {
-    "message": "Write emails from short prompts and insert them into email fields in your browser."
+    "message": "適用於 Gmail 的 AI 電子郵件撰寫器：協助您直接在瀏覽器中撰寫回覆與建立郵件草稿。"
   },
   "storeDesc": {
-    "message": "AI Email Writer helps you turn short prompts into ready-to-send emails in your browser. Open the side panel, describe what you want to say, generate a draft, and insert it into the current email field."
+    "message": "🚀 AI 電子郵件撰寫器 — 在 Gmail 中更快地撰寫和回覆\nAI 電子郵件撰寫器是一個 Chrome 擴展，旨在幫助用戶直接在 Gmail 中創建草稿和準備回覆。\n每次不必從空白草稿開始，您可以根據當前對話生成文本，並繼續工作而不打斷您的思路。\n該擴展專注於一個實用的任務：使在 Gmail 中創建回覆更快更簡單。\n✨ AI 電子郵件撰寫器的工作原理\n1️⃣ 打開 Gmail\n2️⃣ 打開一個對話或開始一個新草稿\n3️⃣ 點擊“使用 AI 撰寫”按鈕\n4️⃣ 描述您想要說的內容\n5️⃣ 選擇可用的語氣選項\n6️⃣ 生成並將結果插入 Gmail\n簡單的工作流程。最少的步驟。\n📌 為 Gmail 中更快的回覆而設計\nAI 電子郵件撰寫器集成到 Gmail 中，幫助縮短準備回覆所花的時間。\n該擴展可以：\n➤ 根據您的指示生成草稿文本\n➤ 使用當前打開的對話的上下文\n➤ 建議回覆內容\n➤ 將生成的文本插入草稿欄位\n➤ 幫助簡化日常溝通\n目標不是取代您的寫作過程——而是幫助您更快地移動並減少重複編輯。\n💡 常見使用案例\n💼 工作溝通\n更快地準備對同事、合作夥伴和客戶的回覆。\n📅 跟進\n為正在進行的對話生成草稿。\n📨 收件箱管理\n減少重複溝通中的手動寫作。\n🧑‍💻 日常工作流程\n加快例行通信，同時保持對最終結果的控制。\n🎯 主要功能\n🔹 AI 電子郵件回覆\n使用您的提示和當前 Gmail 上下文生成草稿回覆。\n🔹 AI 電子郵件撰寫\n創建新草稿而不必從頭開始。\n🔹 電子郵件撰寫器生成器\n根據簡短指示生成完整草稿。\n🔹 電子郵件回覆生成器\n準備建議文本並在發送前進行編輯。\n🔹 電子郵件 AI 助手\n在 Gmail 中直接使用引導草擬。\n⚡ 設計簡單的流程\n➤ 打開 Gmail\n➤ 生成文本\n➤ 審核\n➤ 如有需要進行調整\n➤ 發送\n無需複雜的設置。\n📍 為什麼用戶選擇 AI 電子郵件撰寫器\n減少重複打字\n更快地準備草稿\n保持在 Gmail 內部\n簡化回覆創建\n在發送前保持最終控制\n減少例行工作\n💬 常見問題\n❓ 該擴展在 Gmail 之外工作嗎？\n💡 AI 電子郵件撰寫器專為 Gmail 工作流程而設計。\n❓ 它會自動發送消息嗎？\n💡 不會。生成的內容會插入草稿並保持可編輯。\n❓ 它能理解當前對話嗎？\n💡 該擴展可以使用打開的 Gmail 主題中的上下文來幫助生成相關草稿。\n❓ 我可以編輯生成的文本嗎？\n💡 可以。您在發送前保持控制。\n❓ 我需要帳戶嗎？\n💡 登錄是訪問生成功能和可用計劃所必需的。\n❓ 有免費試用嗎？\n💡 根據當前的提供情況，可能會有試用訪問和付費計劃。\n🌟 優勢\n📌 更快的回覆工作流程\n📌 減少重複寫作\n📌 更容易的草稿準備\n📌 更高效的收件箱處理\n📌 減少手動工作\n📌 更流暢的 Gmail 體驗\nAI 電子郵件撰寫器幫助用戶在 Gmail 中以更少的手動步驟和更快的工作流程準備回覆和草稿。"
   }
 }
