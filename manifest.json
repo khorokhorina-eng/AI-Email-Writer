@@ -24,10 +24,13 @@
     "default_path": "popup.html"
   },
   "permissions": ["storage", "sidePanel", "tabs"],
-  "host_permissions": ["http://*/*", "https://*/*"],
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "https://mail.voicetext.world/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
+      "matches": ["https://mail.google.com/*"],
       "js": ["contentScript.js"],
       "run_at": "document_idle"
     }
