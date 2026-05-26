@@ -12,6 +12,23 @@ const authSignOutBtn = document.getElementById("authSignOut");
 let currentSubscription = { active: false, plan: null };
 let authState = { signedIn: false, email: "", method: null };
 
+function queryActiveTab() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(tabs?.[0] || null);
+    });
+  });
+}
+
+async function getActiveTabUrl() {
+  const tab = await queryActiveTab();
+  return String(tab?.url || "https://mail.google.com/mail/u/0/#inbox");
+}
+
 function setStatus(text, ok = false) {
   statusEl.textContent = text;
   statusEl.classList.toggle("ok", ok);
@@ -69,9 +86,10 @@ async function signInWithGoogle() {
   authGoogleBtn.disabled = true;
   authGoogleBtn.textContent = "Opening Google...";
   try {
+    const returnUrl = await getActiveTabUrl();
     await sendMessage({
       type: "startGoogleSignIn",
-      returnUrl: chrome.runtime.getURL("paywall.html"),
+      returnUrl,
     });
     setStatus("Complete Google sign-in in the opened tab. This page will work after you return.");
   } catch (error) {
@@ -109,10 +127,11 @@ async function openCheckout(planId, button) {
   setStatus("Creating Stripe Checkout session...");
 
   try {
+    const returnUrl = await getActiveTabUrl();
     const result = await sendMessage({
       type: "createCheckoutSession",
       planId,
-      returnUrl: chrome.runtime.getURL("paywall.html"),
+      returnUrl,
     });
 
     if (!result.url) {
