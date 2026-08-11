@@ -230,7 +230,7 @@ function updateTrialUI() {
   if (exhausted) {
     trialEndedCopyEl.textContent = signedIn
       ? `Tomorrow your daily limit will reset. Signed-in devices share the same daily limit.`
-      : `Tomorrow your daily limit will reset. Sign in if you want the same daily limit synced across devices.`;
+      : `Tomorrow your daily limit will reset.`;
     statusEl.textContent = "Daily limit reached";
     hintEl.textContent = `${FREE_DAILY_REPLIES} replies are available each day. Tomorrow your daily limit will reset.`;
   }
