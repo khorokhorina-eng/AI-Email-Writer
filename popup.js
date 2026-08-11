@@ -9,36 +9,26 @@ const contextBarEl = document.querySelector(".context-bar");
 const refreshContextBtn = document.getElementById("refreshContextBtn");
 const insertDraftBtn = document.getElementById("insertDraftBtn");
 const generateBtn = document.getElementById("generateBtn");
-const openPaywallBtn = document.getElementById("openPaywallBtn");
 const trialEndedCardEl = document.getElementById("trialEndedCard");
 const trialEndedCopyEl = document.getElementById("trialEndedCopy");
-const trialEndedActionBtn = document.getElementById("trialEndedActionBtn");
-const monthlyPlanBtn = document.getElementById("monthlyPlanBtn");
-const yearlyPlanBtn = document.getElementById("yearlyPlanBtn");
 const profileTriggerBtn = document.getElementById("profileTrigger");
 const closeDrawerBtn = document.getElementById("closeDrawer");
 const drawerBackdropEl = document.getElementById("drawerBackdrop");
-const drawerUpgradeBtn = document.getElementById("drawerUpgrade");
 const accountActionBtn = document.getElementById("accountAction");
 const drawerEmailEl = document.getElementById("drawerEmail");
 const drawerPlanNameEl = document.getElementById("drawerPlanName");
 const drawerPlanMetaEl = document.getElementById("drawerPlanMeta");
-const backToReaderBtn = document.getElementById("backToReader");
-const readerScreenEl = document.getElementById("readerScreen");
-const paywallScreenEl = document.getElementById("paywallScreen");
-const paywallStatusEl = document.getElementById("paywallStatus");
 const emailFormCardEl = document.querySelector(".email-form-card");
 
 const GMAIL_INBOX_URL = "https://mail.google.com/mail/u/0/#inbox";
 const APP_BASE_URL = "https://mail.voicetext.world";
 const CONTEXT_STORAGE_KEY = "activeEmailContext";
 const DEVICE_TOKEN_STORAGE_KEY = "aiEmailWriterDeviceToken";
-const FREE_TRIAL_REPLIES = 15;
+const FREE_DAILY_REPLIES = 8;
 
 const state = {
   status: "Ready",
   message: "Open a Gmail email. Click “Write with AI”. Type what you want, then insert the reply.",
-  activeScreen: "reader",
   gmailAutoOpened: false,
   isGmailTab: false,
   activeTabId: null,
@@ -57,23 +47,17 @@ const state = {
     subscriptionStatus: "none",
   },
   trial: {
-    repliesLeft: FREE_TRIAL_REPLIES,
+    repliesLeft: FREE_DAILY_REPLIES,
   },
   analyticsSessionId: `aiew_${Date.now()}`,
   contextTracked: false,
-  trialExhaustedTracked: false,
   isAuthenticating: false,
-  authReturnScreen: "drawer",
   authPollTimer: null,
 };
 
 function updateUI() {
   statusEl.textContent = state.status;
   hintEl.textContent = state.message;
-  const showingPaywall = state.activeScreen === "paywall";
-  readerScreenEl.classList.toggle("hidden", showingPaywall);
-  paywallScreenEl.classList.toggle("hidden", !showingPaywall);
-  backToReaderBtn.classList.toggle("hidden", !showingPaywall);
   updateContextUI();
   updateTrialUI();
   updateActionState();
@@ -82,11 +66,6 @@ function updateUI() {
 function setStatus(status, message) {
   state.status = status;
   state.message = message;
-  updateUI();
-}
-
-function setActiveScreen(screen) {
-  state.activeScreen = screen === "paywall" ? "paywall" : "reader";
   updateUI();
 }
 
@@ -144,12 +123,6 @@ function startAuthPolling() {
     }
     void loadAccountState().then(updateUI);
   }, 1500);
-}
-
-function setPaywallStatus(message) {
-  if (paywallStatusEl) {
-    paywallStatusEl.textContent = message;
-  }
 }
 
 async function getActiveTabUrl() {
@@ -222,87 +195,49 @@ function updateContextUI() {
   contextBarEl.classList.toggle("has-context", Boolean(subject));
 }
 
+function isDailyLimitReached() {
+  return Number(state.trial.repliesLeft || 0) <= 0;
+}
+
 function updateActionState() {
   const hasDraft = Boolean(draftOutputEl.value.trim());
-  const exhausted = isTrialExhausted();
+  const exhausted = isDailyLimitReached();
   insertDraftBtn.disabled = !hasDraft;
   generateBtn.textContent = hasDraft ? "Regenerate reply" : "Generate reply";
   taskInputEl.disabled = exhausted;
   toneSelectEl.disabled = exhausted;
   emailFormCardEl.classList.toggle("is-locked", exhausted);
-  if (exhausted) {
-    generateBtn.disabled = true;
-    insertDraftBtn.disabled = !hasDraft;
-  } else {
-    generateBtn.disabled = false;
-  }
-}
-
-function isTrialExhausted() {
-  return !state.account.paid && Number(state.trial.repliesLeft || 0) <= 0;
+  generateBtn.disabled = exhausted;
 }
 
 function updateTrialUI() {
   const repliesLeft = Math.max(0, Number(state.trial.repliesLeft || 0));
   const exhausted = repliesLeft <= 0;
   const signedIn = Boolean(state.account.signedIn);
-  const paid = Boolean(state.account.paid);
-  openPaywallBtn.classList.toggle("hidden", paid || !exhausted);
-  drawerUpgradeBtn.classList.toggle("hidden", paid || !exhausted);
+
   accountActionBtn.textContent = signedIn ? "Sign out" : "Sign in with Google";
   drawerEmailEl.textContent = signedIn ? state.account.email || "Signed in" : "Guest mode";
-  monthlyPlanBtn.textContent = signedIn ? "Subscribe monthly" : "Sign in with Google";
-  yearlyPlanBtn.textContent = signedIn ? "Subscribe yearly" : "Sign in with Google";
-  trialEndedCardEl.classList.toggle("hidden", paid || !exhausted);
-  if (!paid && exhausted) {
-    trialEndedCopyEl.textContent = signedIn
-      ? "Choose a plan to unlock unlimited email writing."
-      : "Sign in with Google to choose a plan and keep writing replies.";
-    trialEndedActionBtn.textContent = signedIn ? "View plans" : "Sign in with Google";
-  }
-
-  if (paid) {
-    drawerPlanNameEl.textContent = "Premium";
-    drawerPlanMetaEl.textContent = "Unlimited email writing is active on this account.";
-    setPaywallStatus("Your premium plan is active.");
-    if (state.activeScreen === "reader") {
-      statusEl.textContent = state.status === "Trial ended" ? "Ready" : state.status;
-    }
-    return;
-  }
-
-  drawerPlanNameEl.textContent = exhausted ? "Trial Ended" : "Free Trial";
+  drawerPlanNameEl.textContent = "Free";
   drawerPlanMetaEl.textContent = signedIn
     ? exhausted
-      ? `Signed in as ${state.account.email || "your account"}. Your 15 free replies are used up.`
-      : `${repliesLeft} of ${FREE_TRIAL_REPLIES} free replies left. Signed in as ${state.account.email || "your account"}.`
+      ? `Signed in as ${state.account.email || "your account"}. You used today’s ${FREE_DAILY_REPLIES} replies.`
+      : `${repliesLeft} of ${FREE_DAILY_REPLIES} replies left today. Signed in as ${state.account.email || "your account"}.`
     : exhausted
-      ? "Your 15 free replies are used up. Upgrade to keep writing."
-      : `${repliesLeft} of ${FREE_TRIAL_REPLIES} free replies left.`;
-  setPaywallStatus(
-    signedIn
-      ? "Choose a plan to unlock unlimited email writing."
-      : "Sign in with Google before checkout."
-  );
-  if (exhausted) {
-    if (!state.trialExhaustedTracked) {
-      state.trialExhaustedTracked = true;
-      void trackEvent("trial_exhausted", {
-        replies_left: 0,
-      });
-    }
-    if (state.activeScreen === "reader") {
-      statusEl.textContent = "Trial ended";
-      hintEl.textContent = "Your free trial is over. Choose a plan to keep writing replies.";
-    }
-    return;
-  }
+      ? `You used today’s ${FREE_DAILY_REPLIES} free replies.`
+      : `${repliesLeft} of ${FREE_DAILY_REPLIES} replies left today.`;
 
-  state.trialExhaustedTracked = false;
+  trialEndedCardEl.classList.toggle("hidden", !exhausted);
+  if (exhausted) {
+    trialEndedCopyEl.textContent = signedIn
+      ? `Your ${FREE_DAILY_REPLIES} free replies reset tomorrow. Signed-in devices share the same daily limit.`
+      : `Your ${FREE_DAILY_REPLIES} free replies reset tomorrow. Sign in if you want the same daily limit synced across devices.`;
+    statusEl.textContent = "Daily limit reached";
+    hintEl.textContent = `You used today’s ${FREE_DAILY_REPLIES} free replies. The limit resets tomorrow.`;
+  }
 }
 
 async function loadTrialState() {
-  state.trial = { repliesLeft: FREE_TRIAL_REPLIES };
+  state.trial = { repliesLeft: FREE_DAILY_REPLIES };
 }
 
 async function loadStoredContext() {
@@ -365,13 +300,13 @@ async function loadAccountState() {
     state.account = {
       signedIn: Boolean(data?.signedIn),
       email: String(data?.email || ""),
-      paid: Boolean(data?.paid),
-      plan: String(data?.plan || ""),
-      subscriptionStatus: String(data?.subscriptionStatus || "none"),
+      paid: false,
+      plan: "",
+      subscriptionStatus: "none",
     };
     if (Number.isFinite(Number(data?.repliesLeft))) {
       state.trial = {
-        repliesLeft: Math.max(0, Math.min(FREE_TRIAL_REPLIES, Math.floor(Number(data.repliesLeft)))),
+        repliesLeft: Math.max(0, Math.min(FREE_DAILY_REPLIES, Math.floor(Number(data.repliesLeft)))),
       };
     }
   } catch (_error) {
@@ -382,36 +317,28 @@ async function loadAccountState() {
       plan: null,
       subscriptionStatus: "none",
     };
-    state.trial = { repliesLeft: FREE_TRIAL_REPLIES };
+    state.trial = { repliesLeft: FREE_DAILY_REPLIES };
   }
 
   if (state.isAuthenticating && state.account.signedIn) {
     stopAuthPolling();
     state.isAuthenticating = false;
-    if (state.authReturnScreen === "paywall") {
-      setActiveScreen("paywall");
-      closeDrawer();
-      setPaywallStatus("Signed in. Choose your plan to continue.");
-    } else {
-      openDrawer();
-    }
+    openDrawer();
     setStatus("Signed in", `Signed in as ${state.account.email || "your account"}.`);
   } else if (!state.account.signedIn && wasSignedIn) {
-    setStatus("Signed out", "Sign in again before checkout.");
-    setPaywallStatus("Continue with Google before checkout.");
+    setStatus("Signed out", "You can still use the daily free limit on this device.");
   }
 }
 
-async function signInWithGoogle(targetScreen = "drawer", source = "unknown") {
+async function signInWithGoogle(source = "unknown") {
   if (!state.deviceToken) {
     await loadOrCreateDeviceToken();
   }
 
   state.isAuthenticating = true;
-  state.authReturnScreen = targetScreen === "paywall" ? "paywall" : "drawer";
   void trackEvent("login_started", {
     source,
-    target_screen: state.authReturnScreen,
+    target_screen: "drawer",
   });
 
   try {
@@ -420,7 +347,6 @@ async function signInWithGoogle(targetScreen = "drawer", source = "unknown") {
     openExternalPage(
       `${APP_BASE_URL}/auth/google/start?device_token=${encodeURIComponent(state.deviceToken)}&return_url=${encodeURIComponent(returnUrl)}`
     );
-    setPaywallStatus("Complete Google sign-in in the opened tab.");
     setStatus("Opening Google", "Complete sign-in in the opened tab.");
     closeDrawer();
   } catch (error) {
@@ -443,59 +369,6 @@ async function signOutAccount() {
     body: JSON.stringify({ device_token: state.deviceToken }),
   });
   await loadAccountState();
-}
-
-async function startCheckout(planId) {
-  if (!state.deviceToken) {
-    await loadOrCreateDeviceToken();
-  }
-
-  const returnUrl = await getActiveTabUrl();
-
-  const data = await apiRequest("/checkout", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-device-token": state.deviceToken,
-    },
-    body: JSON.stringify({
-      device_token: state.deviceToken,
-      plan: planId,
-      return_url: returnUrl,
-    }),
-  });
-
-  if (!data?.url) {
-    throw new Error("Unable to open checkout.");
-  }
-
-  openExternalPage(String(data.url));
-}
-
-function openPaywall(source = "unknown") {
-  setActiveScreen("paywall");
-  closeDrawer();
-  void trackEvent("paywall_opened", {
-    source,
-    signed_in: Boolean(state.account.signedIn),
-    replies_left: Math.max(0, Number(state.trial.repliesLeft || 0)),
-  });
-  setPaywallStatus(
-    state.account.signedIn
-      ? "Choose a plan to unlock unlimited email writing."
-      : "Continue with Google before checkout."
-  );
-}
-
-async function openCheckoutForPlan(planId) {
-  if (!state.account.signedIn) {
-    setPaywallStatus("Sign in with Google before checkout.");
-    await signInWithGoogle("paywall", `checkout_${planId}`);
-    return;
-  }
-
-  void trackEvent("checkout_started", { plan_id: planId });
-  await startCheckout(planId);
 }
 
 async function refreshActivePageContext() {
@@ -551,9 +424,8 @@ async function refreshActivePageContext() {
 }
 
 async function generateDraft() {
-  if (isTrialExhausted()) {
-    setActiveScreen("paywall");
-    setStatus("Trial ended", "Your free trial is over. Choose a plan to keep writing replies.");
+  if (isDailyLimitReached()) {
+    setStatus("Daily limit reached", `You used today’s ${FREE_DAILY_REPLIES} free replies. The limit resets tomorrow.`);
     return null;
   }
   const taskPrompt = taskInputEl.value.trim();
@@ -600,28 +472,22 @@ async function generateDraft() {
     }
 
     draftOutputEl.value = body;
-    state.account.paid = Boolean(data?.paid);
-    state.account.subscriptionStatus = String(data?.subscriptionStatus || state.account.subscriptionStatus || "none");
-    state.account.plan = String(data?.plan || state.account.plan || "");
     if (Number.isFinite(Number(data?.repliesLeft))) {
       state.trial = {
-        repliesLeft: Math.max(0, Math.min(FREE_TRIAL_REPLIES, Math.floor(Number(data.repliesLeft)))),
+        repliesLeft: Math.max(0, Math.min(FREE_DAILY_REPLIES, Math.floor(Number(data.repliesLeft)))),
       };
     }
     void trackEvent("reply_generated", {
       tone: toneSelectEl.value,
-      paid: Boolean(data?.paid),
       replies_left: Number.isFinite(Number(data?.repliesLeft)) ? Math.max(0, Math.floor(Number(data.repliesLeft))) : "",
       language: state.emailContext.language || "",
     });
 
     updateActionState();
-    if (state.account.paid) {
-      setStatus("Draft ready", "Review the draft, then insert it into Gmail.");
-    } else if (isTrialExhausted()) {
-      setStatus("Draft ready", "This was your last free reply. Choose a plan to keep writing.");
+    if (isDailyLimitReached()) {
+      setStatus("Draft ready", "This was your last free reply for today.");
     } else {
-      setStatus("Draft ready", `Review the draft, then insert it into Gmail. ${state.trial.repliesLeft} free replies left.`);
+      setStatus("Draft ready", `Review the draft, then insert it into Gmail. ${state.trial.repliesLeft} replies left today.`);
     }
 
     return { subject, body };
@@ -629,8 +495,7 @@ async function generateDraft() {
     if (/not-enough-replies/i.test(String(error.message || ""))) {
       state.trial = { repliesLeft: 0 };
       updateUI();
-      setActiveScreen("paywall");
-      setStatus("Trial ended", "Your free trial is over. Choose a plan to keep writing replies.");
+      setStatus("Daily limit reached", `You used today’s ${FREE_DAILY_REPLIES} free replies. The limit resets tomorrow.`);
       return null;
     }
 
@@ -682,7 +547,6 @@ function initializePopup() {
     updateUI();
     void trackEvent("extension_opened", {
       signed_in: Boolean(state.account.signedIn),
-      paid: Boolean(state.account.paid),
       replies_left: Math.max(0, Number(state.trial.repliesLeft || 0)),
     });
     void refreshActivePageContext();
@@ -697,58 +561,26 @@ function initializePopup() {
   insertDraftBtn.addEventListener("click", () => {
     void insertDraft();
   });
-
-  openPaywallBtn.addEventListener("click", () => {
-    void trackEvent("upgrade_clicked", { source: "reader_button" });
-    openPaywall("reader_button");
-  });
-  trialEndedActionBtn.addEventListener("click", () => {
-    if (state.account.signedIn) {
-      void trackEvent("upgrade_clicked", { source: "trial_ended_card" });
-      openPaywall("trial_ended_card");
-      return;
-    }
-    void signInWithGoogle("paywall", "trial_ended_card");
-  });
   refreshContextBtn.addEventListener("click", () => {
     void refreshActivePageContext();
-  });
-  backToReaderBtn.addEventListener("click", () => {
-    setActiveScreen("reader");
-  });
-
-  monthlyPlanBtn.addEventListener("click", () => {
-    void openCheckoutForPlan("monthly").catch((error) => {
-      setStatus("Checkout unavailable", error.message || "Unable to open checkout.");
-    });
-  });
-  yearlyPlanBtn.addEventListener("click", () => {
-    void openCheckoutForPlan("annual").catch((error) => {
-      setStatus("Checkout unavailable", error.message || "Unable to open checkout.");
-    });
   });
 
   profileTriggerBtn.addEventListener("click", openDrawer);
   closeDrawerBtn.addEventListener("click", closeDrawer);
   drawerBackdropEl.addEventListener("click", closeDrawer);
-  drawerUpgradeBtn.addEventListener("click", () => {
-    void trackEvent("upgrade_clicked", { source: "drawer_button" });
-    openPaywall("drawer_button");
-    closeDrawer();
-  });
   accountActionBtn.addEventListener("click", () => {
     if (state.account.signedIn) {
       void signOutAccount()
         .then(() => {
           updateUI();
-          setStatus("Signed out", "You can still use your free replies on this device.");
+          setStatus("Signed out", "You can still use the daily free limit on this device.");
         })
         .catch((error) => {
           setStatus("Sign-out failed", error.message || "Unable to sign out right now.");
         });
       return;
     }
-    void signInWithGoogle("drawer", "drawer_button");
+    void signInWithGoogle("drawer_button");
   });
 
   window.addEventListener("focus", () => {

@@ -42,7 +42,10 @@ loadEnvFile();
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_TEXT_MODEL = process.env.OPENAI_TEXT_MODEL || "gpt-4.1-mini";
-const FREE_TRIAL_REPLIES = Math.max(1, Number(process.env.FREE_TRIAL_REPLIES || 15));
+const FREE_DAILY_REPLIES = Math.max(
+  1,
+  Number(process.env.FREE_DAILY_REPLIES || process.env.FREE_TRIAL_REPLIES || 8)
+);
 const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || "").replace(/\/+$/, "");
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
@@ -89,6 +92,10 @@ const EMAIL_TONE_INSTRUCTIONS = {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function getUsagePeriodKey(date = new Date()) {
+  return date.toISOString().slice(0, 10);
 }
 
 function renderGa4Snippet(pagePath, eventName = "", eventParams = null) {
@@ -478,9 +485,11 @@ function normalizeReplyCount(value, fallback = 0) {
 }
 
 function getOrCreateDeviceUsage(state, deviceToken) {
+  const periodKey = getUsagePeriodKey();
   if (!deviceToken) {
     return {
       repliesLeft: 0,
+      periodKey,
       createdAt: nowIso(),
       updatedAt: nowIso(),
     };
@@ -488,38 +497,50 @@ function getOrCreateDeviceUsage(state, deviceToken) {
 
   if (!state.deviceUsageByToken[deviceToken]) {
     state.deviceUsageByToken[deviceToken] = {
-      repliesLeft: FREE_TRIAL_REPLIES,
+      repliesLeft: FREE_DAILY_REPLIES,
+      periodKey,
       createdAt: nowIso(),
       updatedAt: nowIso(),
     };
   }
 
   const usage = state.deviceUsageByToken[deviceToken];
-  const fallbackReplies = Number.isFinite(Number(usage.remainingSeconds))
-    ? Math.max(0, Math.min(FREE_TRIAL_REPLIES, Math.floor(Number(usage.remainingSeconds))))
-    : FREE_TRIAL_REPLIES;
-  if (!Number.isFinite(Number(usage.repliesLeft))) {
-    usage.repliesLeft = fallbackReplies;
+  if (usage.periodKey !== periodKey) {
+    usage.periodKey = periodKey;
+    usage.repliesLeft = FREE_DAILY_REPLIES;
     usage.updatedAt = nowIso();
   }
-  usage.repliesLeft = Math.min(
-    FREE_TRIAL_REPLIES,
-    Math.max(0, Math.floor(Number(usage.repliesLeft)))
-  );
+  if (!Number.isFinite(Number(usage.repliesLeft))) {
+    usage.repliesLeft = FREE_DAILY_REPLIES;
+    usage.updatedAt = nowIso();
+  }
+  usage.repliesLeft = Math.min(FREE_DAILY_REPLIES, Math.max(0, Math.floor(Number(usage.repliesLeft))));
   usage.updatedAt = usage.updatedAt || nowIso();
   usage.createdAt = usage.createdAt || nowIso();
   return usage;
 }
 
-function hasClaimedAccountTrial(account) {
-  if (!account) {
-    return false;
+function getOrCreateAccountUsage(state, account) {
+  const periodKey = getUsagePeriodKey();
+  const usageKey = `${account.id}:${periodKey}`;
+  if (!state.accountUsageByPeriod[usageKey]) {
+    state.accountUsageByPeriod[usageKey] = {
+      repliesLeft: FREE_DAILY_REPLIES,
+      periodKey,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
   }
 
-  return (
-    Number.isFinite(Number(account.trialRemainingReplies)) ||
-    Boolean(account.trialClaimedAt)
-  );
+  const usage = state.accountUsageByPeriod[usageKey];
+  usage.periodKey = periodKey;
+  if (!Number.isFinite(Number(usage.repliesLeft))) {
+    usage.repliesLeft = FREE_DAILY_REPLIES;
+  }
+  usage.repliesLeft = Math.min(FREE_DAILY_REPLIES, Math.max(0, Math.floor(Number(usage.repliesLeft))));
+  usage.createdAt = usage.createdAt || nowIso();
+  usage.updatedAt = usage.updatedAt || nowIso();
+  return usage;
 }
 
 function setDeviceUsageRemainingReplies(state, deviceToken, repliesLeft) {
@@ -533,11 +554,12 @@ function setDeviceUsageRemainingReplies(state, deviceToken, repliesLeft) {
 }
 
 function syncDeviceUsageToAccountTrial(state, deviceToken, account) {
-  if (!deviceToken || !account || !hasClaimedAccountTrial(account)) {
+  if (!deviceToken || !account) {
     return;
   }
 
-  setDeviceUsageRemainingReplies(state, deviceToken, account.trialRemainingReplies);
+  const accountUsage = getOrCreateAccountUsage(state, account);
+  setDeviceUsageRemainingReplies(state, deviceToken, accountUsage.repliesLeft);
 }
 
 function claimOrSyncAccountTrial(state, account, deviceToken) {
@@ -551,36 +573,20 @@ function claimOrSyncAccountTrial(state, account, deviceToken) {
   }
 
   const deviceUsage = getOrCreateDeviceUsage(state, deviceToken);
+  const accountUsage = getOrCreateAccountUsage(state, account);
   const deviceRepliesLeft = deviceUsage.repliesLeft;
-  const previousAccountReplies = hasClaimedAccountTrial(account)
-    ? normalizeReplyCount(account.trialRemainingReplies)
-    : null;
+  const previousAccountReplies = normalizeReplyCount(accountUsage.repliesLeft, FREE_DAILY_REPLIES);
 
-  if (!hasClaimedAccountTrial(account)) {
-    account.trialRemainingReplies = normalizeReplyCount(
-      deviceRepliesLeft,
-      FREE_TRIAL_REPLIES
-    );
-    account.trialClaimedAt = nowIso();
-    account.updatedAt = nowIso();
-  } else {
-    account.trialRemainingReplies = Math.min(
-      FREE_TRIAL_REPLIES,
-      normalizeReplyCount(account.trialRemainingReplies),
-      normalizeReplyCount(deviceRepliesLeft, FREE_TRIAL_REPLIES)
-    );
-    account.updatedAt = nowIso();
-  }
+  accountUsage.repliesLeft = Math.min(previousAccountReplies, normalizeReplyCount(deviceRepliesLeft, FREE_DAILY_REPLIES));
+  accountUsage.updatedAt = nowIso();
+  account.updatedAt = nowIso();
 
   syncDeviceUsageToAccountTrial(state, deviceToken, account);
   return {
-    remainingReplies: account.trialRemainingReplies,
+    remainingReplies: accountUsage.repliesLeft,
     previousAccountReplies,
     deviceRepliesLeft,
-    reducedByAccount:
-      Number.isFinite(previousAccountReplies) &&
-      previousAccountReplies < deviceRepliesLeft &&
-      account.trialRemainingReplies === previousAccountReplies,
+    reducedByAccount: accountUsage.repliesLeft < deviceRepliesLeft,
   };
 }
 
@@ -607,7 +613,9 @@ function deductFreeTrialReplies(state, account, deviceToken, replies) {
     return false;
   }
 
-  account.trialRemainingReplies = remainingReplies - normalizedReplies;
+  const accountUsage = getOrCreateAccountUsage(state, account);
+  accountUsage.repliesLeft = remainingReplies - normalizedReplies;
+  accountUsage.updatedAt = nowIso();
   account.updatedAt = nowIso();
   syncDeviceUsageToAccountTrial(state, deviceToken, account);
   return true;
@@ -672,78 +680,13 @@ async function ensureStripeCustomer(state, account) {
 }
 
 async function lookupSubscriptionStatusForAccount(state, account) {
-  if (!account) {
-    return {
-      active: false,
-      status: "none",
-      plan: null,
-      customerId: null,
-      email: null,
-      signedIn: false,
-    };
-  }
-
-  if (!stripe) {
-    return {
-      active: false,
-      status: "none",
-      plan: null,
-      customerId: state.accountToCustomer[account.id] || null,
-      email: account.email,
-      signedIn: true,
-    };
-  }
-
-  const customerId = state.accountToCustomer[account.id];
-  if (!customerId) {
-    return {
-      active: false,
-      status: "none",
-      plan: null,
-      customerId: null,
-      email: account.email,
-      signedIn: true,
-    };
-  }
-
-  const subscriptions = await stripe.subscriptions.list({
-    customer: customerId,
-    status: "all",
-    limit: 20,
-  });
-
-  const activeSub = subscriptions.data.find(
-    (sub) => sub.status === "active" || sub.status === "trialing"
-  );
-
-  if (!activeSub) {
-    return {
-      active: false,
-      status: subscriptions.data[0]?.status || "none",
-      plan: null,
-      customerId,
-      email: account.email,
-      signedIn: true,
-    };
-  }
-
-  const item = activeSub.items?.data?.[0];
-  const plan = getPlanByStripePriceId(item?.price?.id || "");
-
   return {
-    active: true,
-    status: activeSub.status,
-    customerId,
-    email: account.email,
-    signedIn: true,
-    plan: {
-      planId: plan?.id || activeSub.metadata?.planId || null,
-      subscriptionId: activeSub.id,
-      priceId: item?.price?.id || null,
-      interval: item?.price?.recurring?.interval || null,
-      currentPeriodStart: activeSub.current_period_start || null,
-      currentPeriodEnd: activeSub.current_period_end || null,
-    },
+    active: false,
+    status: "free",
+    plan: null,
+    customerId: account ? state.accountToCustomer[account.id] || null : null,
+    email: account?.email || null,
+    signedIn: Boolean(account),
   };
 }
 
@@ -863,21 +806,19 @@ async function handleAuthMe(req, res, parsedUrl) {
       signedIn: false,
       email: "",
       method: null,
-      subscriptionStatus: "none",
+      subscriptionStatus: "free",
       plan: null,
       paid: false,
-      repliesLeft: FREE_TRIAL_REPLIES,
-      freeTrialReplies: FREE_TRIAL_REPLIES,
+      repliesLeft: FREE_DAILY_REPLIES,
+      freeTrialReplies: FREE_DAILY_REPLIES,
+      dailyReplyLimit: FREE_DAILY_REPLIES,
     });
     return;
   }
 
   const state = readState();
   const account = getAccountForDevice(state, deviceToken);
-  const subscription = await lookupSubscriptionStatusForAccount(state, account);
-  const repliesLeft = subscription.active
-    ? 0
-    : getFreeTrialRemainingReplies(state, account, deviceToken);
+  const repliesLeft = getFreeTrialRemainingReplies(state, account, deviceToken);
 
   if (account) {
     writeState(state);
@@ -888,11 +829,12 @@ async function handleAuthMe(req, res, parsedUrl) {
     email: account?.email || "",
     method: account?.method || null,
     signedInAt: account?.updatedAt || null,
-    paid: subscription.active,
-    subscriptionStatus: subscription.status || "none",
-    plan: subscription.plan?.planId || null,
+    paid: false,
+    subscriptionStatus: "free",
+    plan: null,
     repliesLeft,
-    freeTrialReplies: FREE_TRIAL_REPLIES,
+    freeTrialReplies: FREE_DAILY_REPLIES,
+    dailyReplyLimit: FREE_DAILY_REPLIES,
   });
 }
 
@@ -1380,11 +1322,11 @@ async function handleGoogleCallback(_req, res, parsedUrl) {
     completeUrl.searchParams.set(
       "message",
       trialSync.reducedByAccount
-        ? `Signed in as ${account.email}. This Google account already used part of the free trial, so your remaining free replies were updated.`
+        ? `Signed in as ${account.email}. This account already used part of today’s free limit, so your remaining replies were updated.`
         : `Signed in as ${account.email}.`
     );
     if (trialSync.reducedByAccount) {
-      completeUrl.searchParams.set("trial_notice", "used");
+      completeUrl.searchParams.set("daily_limit_notice", "used");
       completeUrl.searchParams.set("remaining_replies", String(trialSync.remainingReplies));
     }
     if (pending.returnUrl) {
@@ -1434,86 +1376,7 @@ async function handleAuthLogout(req, res, parsedUrl) {
 }
 
 async function handleCreateCheckoutSession(req, res, parsedUrl) {
-  if (!ensureStripeConfigured(res)) {
-    return;
-  }
-
-  let body;
-  try {
-    body = await parseJsonBody(req);
-  } catch (error) {
-    sendJson(res, 400, { error: error.message || "Invalid request body." });
-    return;
-  }
-
-  const deviceToken = getDeviceToken(req, parsedUrl, body);
-  const rawPlanId =
-    typeof body.planId === "string"
-      ? body.planId.trim()
-      : typeof body.plan === "string"
-      ? body.plan.trim()
-      : "";
-  const returnUrl = sanitizeExtensionReturnUrl(body.returnUrl || body.return_url || "");
-  if (!deviceToken || !rawPlanId) {
-    sendJson(res, 400, { error: "device_token and plan are required." });
-    return;
-  }
-
-  const selectedPlan = getPlanById(rawPlanId);
-  if (!selectedPlan) {
-    sendJson(res, 400, { error: "Unknown paid plan." });
-    return;
-  }
-
-  if (!selectedPlan.stripePriceId) {
-    sendJson(res, 500, { error: `Stripe price ID is not configured for ${selectedPlan.id}.` });
-    return;
-  }
-
-  const state = readState();
-  let account = getAccountForDevice(state, deviceToken);
-
-  if (!account) {
-    sendJson(res, 401, { error: "Sign in is required before checkout." });
-    return;
-  }
-
-  try {
-    const customerId = await ensureStripeCustomer(state, account);
-    const cancelUrl = returnUrl || getPublicUrl("/paywall/cancel");
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      line_items: [{ price: selectedPlan.stripePriceId, quantity: 1 }],
-      success_url: `${getPublicUrl("/thank-you")}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl,
-      customer: customerId,
-      client_reference_id: account.id,
-      metadata: {
-        accountId: account.id,
-        email: account.email,
-        deviceToken,
-        planId: selectedPlan.id,
-      },
-      allow_promotion_codes: true,
-      subscription_data: {
-        metadata: {
-          accountId: account.id,
-          email: account.email,
-          deviceToken,
-          planId: selectedPlan.id,
-        },
-      },
-    });
-
-    state.sessionToAccount[session.id] = account.id;
-    state.sessionToReturnUrl[session.id] = returnUrl || "";
-    rememberAccountCustomer(state, account.id, customerId);
-    writeState(state);
-
-    sendJson(res, 200, { url: session.url, sessionId: session.id });
-  } catch (error) {
-    sendJson(res, 500, { error: error.message || "Failed to create checkout session." });
-  }
+  sendJson(res, 410, { error: "AI Email Writer is free. Checkout is disabled." });
 }
 
 async function handlePlaybackUsage(req, res, parsedUrl) {
@@ -1537,49 +1400,43 @@ async function handlePlaybackUsage(req, res, parsedUrl) {
   if (!usedReplies) {
     const state = readState();
     const account = getAccountForDevice(state, deviceToken);
-    const subscription = await lookupSubscriptionStatusForAccount(state, account);
-    const repliesLeft = subscription.active
-      ? 0
-      : getFreeTrialRemainingReplies(state, account, deviceToken);
+    const repliesLeft = getFreeTrialRemainingReplies(state, account, deviceToken);
     if (account) {
       writeState(state);
     }
     sendJson(res, 200, {
-      paid: subscription.active,
-      subscriptionStatus: subscription.status || "none",
-      plan: subscription.plan?.planId || null,
+      paid: false,
+      subscriptionStatus: "free",
+      plan: null,
       repliesLeft,
-      freeTrialReplies: FREE_TRIAL_REPLIES,
+      freeTrialReplies: FREE_DAILY_REPLIES,
+      dailyReplyLimit: FREE_DAILY_REPLIES,
     });
     return;
   }
 
   const state = readState();
   const account = getAccountForDevice(state, deviceToken);
-  const subscription = await lookupSubscriptionStatusForAccount(state, account);
-  const ok = subscription.active
-    ? true
-    : deductFreeTrialReplies(state, account, deviceToken, usedReplies);
+  const ok = deductFreeTrialReplies(state, account, deviceToken, usedReplies);
 
   if (!ok) {
     sendJson(res, 402, {
-      error: subscription.active ? "active-plan" : "not-enough-replies",
+      error: "not-enough-replies",
     });
     return;
   }
 
   writeState(state);
 
-  const repliesLeft = subscription.active
-    ? 0
-    : getFreeTrialRemainingReplies(state, account, deviceToken);
+  const repliesLeft = getFreeTrialRemainingReplies(state, account, deviceToken);
 
   sendJson(res, 200, {
-    paid: subscription.active,
-    subscriptionStatus: subscription.status || "none",
-    plan: subscription.plan?.planId || null,
+    paid: false,
+    subscriptionStatus: "free",
+    plan: null,
     repliesLeft,
-    freeTrialReplies: FREE_TRIAL_REPLIES,
+    freeTrialReplies: FREE_DAILY_REPLIES,
+    dailyReplyLimit: FREE_DAILY_REPLIES,
   });
 }
 
@@ -1611,19 +1468,17 @@ async function handleGenerateReply(req, res, parsedUrl) {
 
   const state = readState();
   const account = getAccountForDevice(state, deviceToken);
-  const subscription = await lookupSubscriptionStatusForAccount(state, account);
-  const repliesLeftBefore = subscription.active
-    ? 0
-    : getFreeTrialRemainingReplies(state, account, deviceToken);
+  const repliesLeftBefore = getFreeTrialRemainingReplies(state, account, deviceToken);
 
-  if (!subscription.active && repliesLeftBefore <= 0) {
+  if (repliesLeftBefore <= 0) {
     sendJson(res, 402, {
       error: "not-enough-replies",
       paid: false,
-      subscriptionStatus: subscription.status || "none",
-      plan: subscription.plan?.planId || null,
+      subscriptionStatus: "free",
+      plan: null,
       repliesLeft: 0,
-      freeTrialReplies: FREE_TRIAL_REPLIES,
+      freeTrialReplies: FREE_DAILY_REPLIES,
+      dailyReplyLimit: FREE_DAILY_REPLIES,
     });
     return;
   }
@@ -1637,33 +1492,31 @@ async function handleGenerateReply(req, res, parsedUrl) {
       sourceLanguage,
     });
 
-    if (!subscription.active) {
-      const deducted = deductFreeTrialReplies(state, account, deviceToken, 1);
-      if (!deducted) {
-        sendJson(res, 402, {
-          error: "not-enough-replies",
-          paid: false,
-          subscriptionStatus: subscription.status || "none",
-          plan: subscription.plan?.planId || null,
-          repliesLeft: 0,
-          freeTrialReplies: FREE_TRIAL_REPLIES,
-        });
-        return;
-      }
-      writeState(state);
+    const deducted = deductFreeTrialReplies(state, account, deviceToken, 1);
+    if (!deducted) {
+      sendJson(res, 402, {
+        error: "not-enough-replies",
+        paid: false,
+        subscriptionStatus: "free",
+        plan: null,
+        repliesLeft: 0,
+        freeTrialReplies: FREE_DAILY_REPLIES,
+        dailyReplyLimit: FREE_DAILY_REPLIES,
+      });
+      return;
     }
+    writeState(state);
 
-    const repliesLeft = subscription.active
-      ? 0
-      : getFreeTrialRemainingReplies(state, account, deviceToken);
+    const repliesLeft = getFreeTrialRemainingReplies(state, account, deviceToken);
 
     sendJson(res, 200, {
       ...draft,
-      paid: subscription.active,
-      subscriptionStatus: subscription.status || "none",
-      plan: subscription.plan?.planId || null,
+      paid: false,
+      subscriptionStatus: "free",
+      plan: null,
       repliesLeft,
-      freeTrialReplies: FREE_TRIAL_REPLIES,
+      freeTrialReplies: FREE_DAILY_REPLIES,
+      dailyReplyLimit: FREE_DAILY_REPLIES,
     });
   } catch (error) {
     sendJson(res, 502, { error: error.message || "Failed to generate reply." });
@@ -1691,20 +1544,23 @@ async function handleSubscriptionStatus(req, res, parsedUrl) {
   try {
     const state = readState();
     const account = getAccountForDevice(state, deviceToken);
-    const status = await lookupSubscriptionStatusForAccount(state, account);
-    const repliesLeft = status.active
-      ? 0
-      : getFreeTrialRemainingReplies(state, account, deviceToken);
+    const repliesLeft = getFreeTrialRemainingReplies(state, account, deviceToken);
     if (account) {
       writeState(state);
     }
     sendJson(res, 200, {
       deviceToken,
-      ...status,
+      active: false,
+      status: "free",
+      plan: null,
+      customerId: account ? state.accountToCustomer[account.id] || null : null,
+      email: account?.email || null,
+      signedIn: Boolean(account),
       repliesLeft,
-      freeTrialReplies: FREE_TRIAL_REPLIES,
-      paid: status.active,
-      subscriptionStatus: status.status || "none",
+      freeTrialReplies: FREE_DAILY_REPLIES,
+      dailyReplyLimit: FREE_DAILY_REPLIES,
+      paid: false,
+      subscriptionStatus: "free",
     });
   } catch (error) {
     sendJson(res, 500, { error: error.message || "Failed to read subscription status." });
