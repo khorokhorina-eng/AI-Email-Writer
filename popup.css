@@ -293,8 +293,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  border-color: rgba(220, 91, 59, 0.22);
-  background: linear-gradient(180deg, rgba(255, 248, 245, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
+  border-color: rgba(24, 128, 56, 0.22);
+  background: linear-gradient(180deg, rgba(241, 251, 245, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
 }
 
 .trial-ended-eyebrow {
@@ -303,7 +303,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #b14b34;
+  color: var(--green-ink);
 }
 
 .trial-ended-title {
@@ -318,7 +318,7 @@ body {
   margin: 0;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--muted);
+  color: #3d6b4a;
 }
 
 .trial-banner {

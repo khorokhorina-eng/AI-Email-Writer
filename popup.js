@@ -220,19 +220,19 @@ function updateTrialUI() {
   drawerPlanNameEl.textContent = "Free";
   drawerPlanMetaEl.textContent = signedIn
     ? exhausted
-      ? `Signed in as ${state.account.email || "your account"}. You used today’s ${FREE_DAILY_REPLIES} replies.`
-      : `${repliesLeft} of ${FREE_DAILY_REPLIES} replies left today. Signed in as ${state.account.email || "your account"}.`
+      ? `Signed in as ${state.account.email || "your account"}. ${FREE_DAILY_REPLIES} replies are available each day. Limits reset tomorrow.`
+      : `${repliesLeft} of ${FREE_DAILY_REPLIES} replies left today. Limits reset daily. Signed in as ${state.account.email || "your account"}.`
     : exhausted
-      ? `You used today’s ${FREE_DAILY_REPLIES} free replies.`
-      : `${repliesLeft} of ${FREE_DAILY_REPLIES} replies left today.`;
+      ? `${FREE_DAILY_REPLIES} replies are available each day. Limits reset tomorrow.`
+      : `${repliesLeft} of ${FREE_DAILY_REPLIES} replies left today. Limits reset daily.`;
 
   trialEndedCardEl.classList.toggle("hidden", !exhausted);
   if (exhausted) {
     trialEndedCopyEl.textContent = signedIn
-      ? `Your ${FREE_DAILY_REPLIES} free replies reset tomorrow. Signed-in devices share the same daily limit.`
-      : `Your ${FREE_DAILY_REPLIES} free replies reset tomorrow. Sign in if you want the same daily limit synced across devices.`;
+      ? `Tomorrow your daily limit will reset. Signed-in devices share the same daily limit.`
+      : `Tomorrow your daily limit will reset. Sign in if you want the same daily limit synced across devices.`;
     statusEl.textContent = "Daily limit reached";
-    hintEl.textContent = `You used today’s ${FREE_DAILY_REPLIES} free replies. The limit resets tomorrow.`;
+    hintEl.textContent = `${FREE_DAILY_REPLIES} replies are available each day. Tomorrow your daily limit will reset.`;
   }
 }
 
